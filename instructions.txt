@@ -1,0 +1,39 @@
+
+#######################################
+#### List of Instructions for piss ####
+#######################################
+
+push(data)      Pushes data to top of stack
+pop             Pops 1 element from top of stack
+
+print           Prints top element
+
+add             Pops two and pushes their sum
+sub             Pops two and pushes their difference
+mult            Pops two and pushes their multiple
+div             Pops two and pushes their divisor
+mod             Pops two and pushes their modulo
+
+jump(label)     Jumps to address in memory
+jumpcmp(label)  Jumps if top of stack is non-zero
+
+clt             Compares top two values and pushes non-zero if first is less than,
+                 and zero otherwise
+cle             Compares top two values and pushes non-zero if first is less than
+                 or equal, and zero otherwise
+ceq             Compares top two values and pushes non-zero if first is equal,
+                 and zero otherwise
+cge             Compares top two values and pushes non-zero if first is greater
+                 than or equal, and zero otherwise
+cgt             Compares top two values and pushes non-zero if first is greater
+                 than and zero otherwise
+
+dupe            Duplicates element at top of stack
+swap            Swap first two elements
+copy(n)         Copies n elements from top of stack
+
+pushframe       Push new stack frame
+popframe        Pop stack frame
+store(i, data)  Push object to stack frame
+storetop(i)     Push top of stack to stack frame
+load(i)         Push object from stack frame onto stack
