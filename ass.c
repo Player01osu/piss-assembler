@@ -19,6 +19,7 @@
 #include "lexer.h"
 #include "parser.h"
 
+#define FERROR stderr
 #define panic(...) \
 	do { \
 		fprintf(FERROR, "%s:%d:", __FILE__, __LINE__); \
