@@ -1,0 +1,11 @@
+; Unimplemented
+
+.data
+    printf extern
+    msg db "Hello world!\n\0"
+
+.text
+    ppush msg
+    store64 1
+    load64 1
+    jumpproc printf

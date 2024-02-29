@@ -1,0 +1,11 @@
+    cpush 1
+    store8 0
+    cpush 2
+    store8 1
+    cpush 69
+    store8 2
+    cpush 3
+    store8 3
+
+    load32 0
+    iprint

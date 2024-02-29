@@ -1,9 +1,0 @@
-.data
-    @custom_type 32                  ; Anything less than 255
-    msg db "Hello, world!" '\n' '\0' ; String literal
-
-.text
-    push 69
-    print @custom_type
-    push msg
-    print @cstr

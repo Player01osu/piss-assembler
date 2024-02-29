@@ -2,9 +2,12 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "lexer.h"
 #include "arena.h"
+
+#define panic(msg) { fprintf(stderr, "%s:%d:"msg, __FILE__, __LINE__); exit(1); }
 
 bool is_ident(char c)
 {
@@ -38,8 +41,98 @@ char lexer_peak(Lexer *lexer)
 
 #define BUF_SIZE 16 * 16
 
+void token_name(Token *token, char *buf)
+{
+#define PRINT_TOK(s, k) do { \
+	if (kind == k) { sprintf(buf, "%s", s); } \
+	} while(0)
+	enum TokenKind kind = token->kind;
+
+	PRINT_TOK("pop8", T_POP8);
+	PRINT_TOK("pop32", T_POP32);
+	PRINT_TOK("pop64", T_POP64);
+
+	PRINT_TOK("dupe8", T_DUPE8);
+	PRINT_TOK("dupe32", T_DUPE32);
+	PRINT_TOK("dupe64", T_DUPE64);
+
+	PRINT_TOK("swap8", T_SWAP8);
+	PRINT_TOK("swap32", T_SWAP32);
+	PRINT_TOK("swap64", T_SWAP64);
+
+	PRINT_TOK("copy8", T_COPY8);
+	PRINT_TOK("copy32", T_COPY32);
+	PRINT_TOK("copy64", T_COPY64);
+
+	PRINT_TOK("store8", T_STORE8);
+	PRINT_TOK("store32", T_STORE32);
+	PRINT_TOK("store64", T_STORE64);
+
+	PRINT_TOK("load8", T_LOAD8);
+	PRINT_TOK("load32", T_LOAD32);
+	PRINT_TOK("load64", T_LOAD64);
+
+	PRINT_TOK("ret8", T_RET8);
+	PRINT_TOK("ret32", T_RET32);
+	PRINT_TOK("ret64", T_RET64);
+
+	PRINT_TOK("jump", T_JUMP);
+	PRINT_TOK("jumpcmp", T_JUMPCMP);
+	PRINT_TOK("jumpproc", T_JUMPPROC);
+
+	PRINT_TOK("iclt", T_ICLT);
+	PRINT_TOK("icle", T_ICLE);
+	PRINT_TOK("iceq", T_ICEQ);
+	PRINT_TOK("icgt", T_ICGT);
+	PRINT_TOK("icge", T_ICGE);
+
+	PRINT_TOK("fclt", T_FCLT);
+	PRINT_TOK("fcle", T_FCLE);
+	PRINT_TOK("fceq", T_FCEQ);
+	PRINT_TOK("fcgt", T_FCGT);
+	PRINT_TOK("fcge", T_FCGE);
+
+	PRINT_TOK("cclt", T_CCLT);
+	PRINT_TOK("ccle", T_CCLE);
+	PRINT_TOK("cceq", T_CCEQ);
+	PRINT_TOK("ccgt", T_CCGT);
+	PRINT_TOK("ccge", T_CCGE);
+
+	PRINT_TOK("ipush", T_IPUSH);
+	PRINT_TOK("iadd", T_IADD);
+	PRINT_TOK("isub", T_ISUB);
+	PRINT_TOK("imult", T_IMULT);
+	PRINT_TOK("idiv", T_IDIV);
+	PRINT_TOK("imod", T_IMOD);
+	PRINT_TOK("iprint", T_IPRINT);
+
+	PRINT_TOK("fpush", T_FPUSH);
+	PRINT_TOK("fadd", T_FADD);
+	PRINT_TOK("fsub", T_FSUB);
+	PRINT_TOK("fmult", T_FMULT);
+	PRINT_TOK("fdiv", T_FDIV);
+	PRINT_TOK("fprint", T_FPRINT);
+
+	PRINT_TOK("cpush", T_CPUSH);
+	PRINT_TOK("cadd", T_CADD);
+	PRINT_TOK("csub", T_CSUB);
+	PRINT_TOK("cmult", T_CMULT);
+	PRINT_TOK("cdiv", T_CDIV);
+	PRINT_TOK("cmod", T_CMOD);
+	PRINT_TOK("cprint", T_CPRINT);
+	PRINT_TOK("ciprint", T_CIPRINT);
+
+	PRINT_TOK("ILLEGAL", T_ILLEGAL);
+
+	if (kind == T_IDENT) {
+		sprintf(buf, "IDENT:%s", token->data.s);
+	}
+#undef PRINT_TOK
+}
+
 void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 {
+#define CMP_TOK(s, tok) do { if (strncmp(s, buf, BUF_SIZE) == 0) { token->kind = tok; goto exit; } } while(0)
 	char buf[BUF_SIZE] = {0};
 	char *p = buf;
 	*p++ = c;
@@ -49,80 +142,86 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	}
 	*p = '\0';
 
-	if (strncmp("push", buf, BUF_SIZE) == 0) {
-		token->kind = T_PUSH;
-		goto exit;
-	} else if (strncmp("pop", buf, BUF_SIZE) == 0) {
-		token->kind = T_POP;
-		goto exit;
-	} else if (strncmp("print", buf, BUF_SIZE) == 0) {
-		token->kind = T_PRINT;
-		goto exit;
-	} else if (strncmp("add", buf, BUF_SIZE) == 0) {
-		token->kind = T_ADD;
-		goto exit;
-	} else if (strncmp("sub", buf, BUF_SIZE) == 0) {
-		token->kind = T_SUB;
-		goto exit;
-	} else if (strncmp("mult", buf, BUF_SIZE) == 0) {
-		token->kind = T_MULT;
-		goto exit;
-	} else if (strncmp("div", buf, BUF_SIZE) == 0) {
-		token->kind = T_DIV;
-		goto exit;
-	} else if (strncmp("jump", buf, BUF_SIZE) == 0) {
-		token->kind = T_JUMP;
-		goto exit;
-	} else if (strncmp("jumpcmp", buf, BUF_SIZE) == 0) {
-		token->kind = T_JUMPCMP;
-		goto exit;
-	} else if (strncmp("clt", buf, BUF_SIZE) == 0) {
-		token->kind = T_CLT;
-		goto exit;
-	} else if (strncmp("cle", buf, BUF_SIZE) == 0) {
-		token->kind = T_CLE;
-		goto exit;
-	} else if (strncmp("ceq", buf, BUF_SIZE) == 0) {
-		token->kind = T_CEQ;
-		goto exit;
-	} else if (strncmp("cge", buf, BUF_SIZE) == 0) {
-		token->kind = T_CGE;
-		goto exit;
-	} else if (strncmp("cgt", buf, BUF_SIZE) == 0) {
-		token->kind = T_CGT;
-		goto exit;
-	} else if (strncmp("copy", buf, BUF_SIZE) == 0) {
-		token->kind = T_COPY;
-		goto exit;
-	} else if (strncmp("dupe", buf, BUF_SIZE) == 0) {
-		token->kind = T_DUPE;
-		goto exit;
-	} else if (strncmp("swap", buf, BUF_SIZE) == 0) {
-		token->kind = T_SWAP;
-		goto exit;
-	} else if (strncmp("load", buf, BUF_SIZE) == 0) {
-		token->kind = T_LOAD;
-		goto exit;
-	} else if (strncmp("store", buf, BUF_SIZE) == 0) {
-		token->kind = T_STORE;
-		goto exit;
-	} else if (strncmp("storetop", buf, BUF_SIZE) == 0) {
-		token->kind = T_STORETOP;
-		goto exit;
-	} else if (strncmp("popframe", buf, BUF_SIZE) == 0) {
-		token->kind = T_POPFRAME;
-		goto exit;
-	} else if (strncmp("pushframe", buf, BUF_SIZE) == 0) {
-		token->kind = T_PUSHFRAME;
-		goto exit;
+	CMP_TOK("pop8", T_POP8);
+	CMP_TOK("pop32", T_POP32);
+	CMP_TOK("pop64", T_POP64);
+
+	CMP_TOK("dupe8", T_DUPE8);
+	CMP_TOK("dupe32", T_DUPE32);
+	CMP_TOK("dupe64", T_DUPE64);
+
+	CMP_TOK("swap8", T_SWAP8);
+	CMP_TOK("swap32", T_SWAP32);
+	CMP_TOK("swap64", T_SWAP64);
+
+	CMP_TOK("copy8", T_COPY8);
+	CMP_TOK("copy32", T_COPY32);
+	CMP_TOK("copy64", T_COPY64);
+
+	CMP_TOK("store8", T_STORE8);
+	CMP_TOK("store32", T_STORE32);
+	CMP_TOK("store64", T_STORE64);
+
+	CMP_TOK("load8", T_LOAD8);
+	CMP_TOK("load32", T_LOAD32);
+	CMP_TOK("load64", T_LOAD64);
+
+	CMP_TOK("ret8", T_RET8);
+	CMP_TOK("ret32", T_RET32);
+	CMP_TOK("ret64", T_RET64);
+
+	CMP_TOK("jump", T_JUMP);
+	CMP_TOK("jumpcmp", T_JUMPCMP);
+	CMP_TOK("jumpproc", T_JUMPPROC);
+
+	CMP_TOK("iclt", T_ICLT);
+	CMP_TOK("icle", T_ICLE);
+	CMP_TOK("iceq", T_ICEQ);
+	CMP_TOK("icgt", T_ICGT);
+	CMP_TOK("icge", T_ICGE);
+
+	CMP_TOK("fclt", T_FCLT);
+	CMP_TOK("fcle", T_FCLE);
+	CMP_TOK("fceq", T_FCEQ);
+	CMP_TOK("fcgt", T_FCGT);
+	CMP_TOK("fcge", T_FCGE);
+
+	CMP_TOK("cclt", T_CCLT);
+	CMP_TOK("ccle", T_CCLE);
+	CMP_TOK("cceq", T_CCEQ);
+	CMP_TOK("ccgt", T_CCGT);
+	CMP_TOK("ccge", T_CCGE);
+
+	CMP_TOK("ipush", T_IPUSH);
+	CMP_TOK("iadd", T_IADD);
+	CMP_TOK("isub", T_ISUB);
+	CMP_TOK("imult", T_IMULT);
+	CMP_TOK("idiv", T_IDIV);
+	CMP_TOK("imod", T_IMOD);
+	CMP_TOK("iprint", T_IPRINT);
+
+	CMP_TOK("fpush", T_FPUSH);
+	CMP_TOK("fadd", T_FADD);
+	CMP_TOK("fsub", T_FSUB);
+	CMP_TOK("fmult", T_FMULT);
+	CMP_TOK("fdiv", T_FDIV);
+	CMP_TOK("fprint", T_FPRINT);
+
+	CMP_TOK("cpush", T_CPUSH);
+	CMP_TOK("cadd", T_CADD);
+	CMP_TOK("csub", T_CSUB);
+	CMP_TOK("cmult", T_CMULT);
+	CMP_TOK("cdiv", T_CDIV);
+	CMP_TOK("cmod", T_CMOD);
+	CMP_TOK("cprint", T_CPRINT);
+	CMP_TOK("ciprint", T_CIPRINT);
+
+	// Label
+	if (lexer_peak(lexer) == ':') {
+		lexer_bump(lexer);
+		token->kind = T_LABEL;
 	} else {
-		// Label
-		if (lexer_peak(lexer) == ':') {
-			lexer_bump(lexer);
-			token->kind = T_LABEL;
-		} else {
-			token->kind = T_IDENT;
-		}
+		token->kind = T_IDENT;
 	}
 
 	// TODO: Check this out, it wasn't adding null terminator
@@ -134,6 +233,7 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 
 	token->data.s = s;
 exit: ;
+#undef CMP_TOK
 }
 
 void lexer_consume_datatype(Lexer *lexer, Token *token)
@@ -166,20 +266,110 @@ void lexer_consume_datatype(Lexer *lexer, Token *token)
 exit: ;
 }
 
-void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
+bool is_num_lit(char c)
 {
+	return isdigit(c) || c == '.';
+}
+
+void lexer_consume_signed_num_lit(Lexer *lexer, Token *token, char c)
+{
+	bool is_float = false;
 	char buf[BUF_SIZE] = {0};
+	char peak = lexer_peak(lexer);
 	char *p = buf;
 	*p++ = c;
 
-	while (isdigit(lexer_peak(lexer))) {
+	while (is_num_lit(peak)) {
+		if (peak == '.') is_float = true;
 		*p++ = lexer_bump(lexer);
+		peak = lexer_peak(lexer);
 	}
 	*p = '\0';
 
-	int i = atoi(buf);
-	token->kind = T_NUMLIT;
-	token->data.i = i;
+	if (is_float) {
+		double f = atof(buf);
+		token->kind = T_FNUMLIT;
+		token->data.f = f;
+	} else {
+		int i = atoi(buf);
+		token->kind = T_INUMLIT;
+		token->data.i = i;
+	}
+}
+
+bool is_valid_digit(char c, int base)
+{
+	switch (base) {
+		case 16: {
+			return (c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102);
+		} break;
+		default: {
+			panic("Unknown base; unreachable");
+		}
+	}
+}
+
+bool is_valid_base(char c)
+{
+	return c == 'x' || c == 'X';
+}
+
+void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
+{
+	bool is_float = false;
+	char buf[BUF_SIZE] = {0};
+	char peak = lexer_peak(lexer);
+	char *p = buf;
+	*p++ = c;
+
+	// Parse different base
+	if (c == '0' && is_valid_base(peak)) {
+		int base = 16;
+		--p;
+		switch (peak) {
+			case 'X':
+			case 'x': {
+				base = 16;
+			} break;
+			default: {
+				// Invalid literal base (0x)
+				token->kind = T_ILLEGAL;
+				goto error;
+			}
+		}
+
+		lexer_bump(lexer);
+		peak = lexer_peak(lexer);
+
+		while (is_valid_digit(peak, base)) {
+			*p++ = lexer_bump(lexer);
+			peak = lexer_peak(lexer);
+		}
+
+		long ui = strtol(buf, NULL, base);
+		token->kind = T_UINUMLIT;
+		token->data.ui = ui;
+
+		return;
+	}
+
+	while (is_num_lit(peak)) {
+		if (peak == '.') is_float = true;
+		*p++ = lexer_bump(lexer);
+		peak = lexer_peak(lexer);
+	}
+	*p = '\0';
+
+	if (is_float) {
+		double f = atof(buf);
+		token->kind = T_FNUMLIT;
+		token->data.f = f;
+	} else {
+		long ui = atol(buf);
+		token->kind = T_UINUMLIT;
+		token->data.ui = ui;
+	}
+error: ;
 }
 
 void lexer_consume_comment(Lexer *lexer)
@@ -198,7 +388,7 @@ redo: ;
 		goto exit;
 	}
 
-	if (isalpha(c)) {
+	if (isalpha(c) || c == '_') {
 		lexer_consume_ident(lexer, token, c);
 		goto exit;
 	}
@@ -223,6 +413,9 @@ redo: ;
 		} break;
 		case '@': {
 			lexer_consume_datatype(lexer, token);
+		} break;
+		case '-': {
+			lexer_consume_signed_num_lit(lexer, token, c);
 		} break;
 		default: {
 

@@ -1,39 +1,73 @@
 
-#######################################
-#### List of Instructions for piss ####
-#######################################
+###########################################################
+************** List of Instructions for PISS **************
+###########################################################
 
-push(data)      Pushes data to top of stack
-pop             Pops 1 element from top of stack
+pop8                     Pops 1 byte from top of stack
+pop32                    Pops 4 bytes from top of stack
+pop64                    Pops 8 bytes from top of stack
 
-print           Prints top element
+ipush(int)               Push 4 bytes int to top of stack
+iadd                     Pops two and pushes their sum
+isub                     Pops two and pushes their difference
+imult                    Pops two and pushes their multiple
+idiv                     Pops two and pushes their divisor
+imod                     Pops two and pushes their modulo
+iprint                   Print top of stack
 
-add             Pops two and pushes their sum
-sub             Pops two and pushes their difference
-mult            Pops two and pushes their multiple
-div             Pops two and pushes their divisor
-mod             Pops two and pushes their modulo
+fpush(float)             Push 4 bytes float to top of stack
+fadd                     Pops two and pushes their sum
+fsub                     Pops two and pushes their difference
+fmult                    Pops two and pushes their multiple
+fdiv                     Pops two and pushes their divisor
+fprint                   Print top of stack
 
-jump(label)     Jumps to address in memory
-jumpcmp(label)  Jumps if top of stack is non-zero
+cpush(char)              Push 1 byte char to top of stack
+cadd                     Pops two and pushes their sum
+csub                     Pops two and pushes their difference
+cmult                    Pops two and pushes their multiple
+cdiv                     Pops two and pushes their divisor
+cmod                     Pops two and pushes their modulo
+cprint                   Print top of stack as ASCII char
+ciprint                  Print top of stack as 8-bit integer
 
-clt             Compares top two values and pushes non-zero if first is less than,
-                 and zero otherwise
-cle             Compares top two values and pushes non-zero if first is less than
-                 or equal, and zero otherwise
-ceq             Compares top two values and pushes non-zero if first is equal,
-                 and zero otherwise
-cge             Compares top two values and pushes non-zero if first is greater
-                 than or equal, and zero otherwise
-cgt             Compares top two values and pushes non-zero if first is greater
-                 than and zero otherwise
+jump(label)              Jumps to address in memory
+jumpcmp(label)           Jumps if top of stack is non-zero
+jumpproc(label, nargs)   Enters procedure with new stackframe, pushing the call
+                          location onto return stack and initializing with n bytes on top of stack
 
-dupe            Duplicates element at top of stack
-swap            Swap first two elements
-copy(n)         Copies n elements from top of stack
+clt                      Compares top two values and pushes non-zero if first is less than,
+                          and zero otherwise
+cle                      Compares top two values and pushes non-zero if first is less than
+                          or equal, and zero otherwise
+ceq                      Compares top two values and pushes non-zero if first is equal,
+                          and zero otherwise
+cgt                      Compares top two values and pushes non-zero if first is greater than,
+                          and zero otherwise
+cge                      Compares top two values and pushes non-zero if first is greater than
+                          or equal, and zero otherwise
 
-pushframe       Push new stack frame
-popframe        Pop stack frame
-store(i, data)  Push object to stack frame
-storetop(i)     Push top of stack to stack frame
-load(i)         Push object from stack frame onto stack
+dupe8                    Duplicates 8 byte element at top of stack
+dupe32                   Duplicates 32 byte element at top of stack
+dupe64                   Duplicates 64 byte element at top of stack
+
+swap8                    Swap top two 8 byte elements
+swap32                   Swap top two 32 byte elements
+swap64                   Swap top two 64 byte elements
+
+copy8(n)                 Copies n 8 byte elements from top of stack
+copy32(n)                Copies n 32 byte elements from top of stack
+copy64(n)                Copies n 64 byte elements from top of stack
+
+ret8(i)                  resume execution
+ret8(i)                  Push 1 byte at index onto return stack and resuming execution
+ret32(i)                 Push 4 bytes at index onto return stack and resuming execution
+ret64(i)                 Push 8 bytes at index onto return stack and resuming execution
+
+store8(i)                Store 1 byte object to stack frame
+store32(i)               Store 4 byte object to stack frame
+store64(i)               Store 8 byte object to stack frame
+
+load8(i)                 Load 1 byte object to top of stack
+load32(i)                Load 4 byte object to top of stack
+load64(i)                Load 8 byte object to top of stack

@@ -6,42 +6,90 @@
 
 enum TokenKind {
 	/*** Instructions ***/
-	T_PUSH,
-	T_POP,
+	T_POP8,
+	T_POP32,
+	T_POP64,
 
-	T_PRINT,
+	T_IPUSH,
+	T_IADD,
+	T_ISUB,
+	T_IMULT,
+	T_IDIV,
+	T_IMOD,
+	T_IPRINT,
 
-	T_ADD,
-	T_SUB,
-	T_MULT,
-	T_DIV,
+	T_FPUSH,
+	T_FADD,
+	T_FSUB,
+	T_FMULT,
+	T_FDIV,
+	T_FPRINT,
+
+	T_CPUSH,
+	T_CADD,
+	T_CSUB,
+	T_CMULT,
+	T_CDIV,
+	T_CMOD,
+	T_CPRINT,
+	T_CIPRINT,
 
 	T_JUMP,
 	T_JUMPCMP,
+	T_JUMPPROC,
 
-	T_COPY,
-	T_DUPE,
-	T_SWAP,
+	T_DUPE8,
+	T_DUPE32,
+	T_DUPE64,
 
-	T_PUSHFRAME,
-	T_POPFRAME,
-	T_STORE,
-	T_STORETOP,
-	T_LOAD,
+	T_SWAP8,
+	T_SWAP32,
+	T_SWAP64,
+
+	T_COPY8,
+	T_COPY32,
+	T_COPY64,
+
+	T_STORE8,
+	T_STORE32,
+	T_STORE64,
+
+	T_LOAD8,
+	T_LOAD32,
+	T_LOAD64,
+
+	T_RET8,
+	T_RET32,
+	T_RET64,
 
 	/* Comparison instructions */
-	T_CLT,
-	T_CLE,
-	T_CEQ,
-	T_CGE,
-	T_CGT,
+	T_ICLT,
+	T_ICLE,
+	T_ICEQ,
+	T_ICGT,
+	T_ICGE,
+
+	T_FCLT,
+	T_FCLE,
+	T_FCEQ,
+	T_FCGT,
+	T_FCGE,
+
+	T_CCLT,
+	T_CCLE,
+	T_CCEQ,
+	T_CCGT,
+	T_CCGE,
 
 	/***/
 
 	T_DATATYPE,
 	T_LABEL,
 	T_IDENT,
-	T_NUMLIT,
+
+	T_UINUMLIT, // Unsigned int literal (8-bytes)
+	T_INUMLIT,  // Signed int literal   (8-bytes)
+	T_FNUMLIT,  // Double               (8-bytes)
 
 	T_COMMA,
 	T_EOL,
@@ -56,6 +104,7 @@ enum DatatypeKind {
 
 enum Primative {
 	P_INT,
+	P_FLOAT,
 };
 
 typedef struct Datatype {
@@ -68,7 +117,9 @@ typedef struct Datatype {
 
 union TokenData {
 	const char *s;
-	int i;
+	uint64_t ui;
+	int64_t i;
+	double f;
 	size_t t_size;
 	Datatype datatype;
 };
@@ -91,6 +142,8 @@ typedef struct Lexer {
 
 	Arena *arena;
 } Lexer;
+
+void token_name(Token *token, char *buf);
 
 void lexer_init(Lexer *lexer, Arena *arena, const char *src, size_t len);
 

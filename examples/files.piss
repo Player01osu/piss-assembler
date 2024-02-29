@@ -1,0 +1,26 @@
+; Unimplemented
+
+.data
+    fopen extern
+    fclose extern
+    fwrite extern
+
+    path db "./test.txt\0"
+    mode db "wb\0"
+    msg db "Hello world!\n\0"
+    len dd 13
+
+.text
+    ppush path
+    ppush mode
+    jumpproc fopen 2
+    store64 0
+
+    ppush msg
+    ulpush 1
+    ulpush len
+    load64 0
+    jumpproc fwrite 4
+
+    load64 0
+    jumpproc fclose 1

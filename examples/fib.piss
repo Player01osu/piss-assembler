@@ -1,0 +1,35 @@
+    jump _start
+
+fib_proc:
+    load32 0
+    ipush 1
+    icle
+    jumpcmp fib_ret
+    pop8
+    pop32
+
+    ipush 1
+    isub
+    jumpproc fib_proc 4
+
+    load32 0
+    ipush 2
+    isub
+    jumpproc fib_proc 4
+
+    iadd
+    ret32
+
+fib_ret:
+    pop8
+    pop32
+    ret32
+
+_start:
+    ipush 10
+    jumpproc fib_proc 4
+    iprint
+
+    cpush 10
+    cprint
+    pop8

@@ -1,3 +1,7 @@
+#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE_EXTENDED
+
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -6,6 +10,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #define ARENA_IMPLEMENTATION
 #include "arena.h"
@@ -17,46 +22,88 @@
 #define panic(msg) { fprintf(stderr, "%s:%d:"msg, __FILE__, __LINE__); exit(1); }
 #define BUF_SIZE 1024 * 4
 #define STACK_SIZE 1024 * 16
+#define LOCAL_SIZE 256
 
 const char *HELP = "Usage: ass [options] file ...\n";
 
-typedef struct Object {
-	void *ptr;
-	size_t size;
-	size_t ref;
-} Object;
-
 enum InstructionKind {
-	I_PUSH,
-	I_POP,
+	I_POP8,
+	I_POP32,
+	I_POP64,
 
-	I_PRINT,
+	I_IPUSH,
+	I_IADD,
+	I_ISUB,
+	I_IMULT,
+	I_IDIV,
+	I_IMOD,
+	I_IPRINT,
 
-	I_ADD,
-	I_SUB,
-	I_MULT,
-	I_DIV,
+	I_FPUSH,
+	I_FADD,
+	I_FSUB,
+	I_FMULT,
+	I_FDIV,
+	I_FPRINT,
+
+	I_CPUSH,
+	I_CADD,
+	I_CSUB,
+	I_CMULT,
+	I_CDIV,
+	I_CMOD,
+	I_CPRINT,
+	I_CIPRINT,
 
 	I_JUMP,
 	I_JUMPCMP,
+	I_JUMPPROC,
 
-	I_COPY,
-	I_DUPE,
-	I_SWAP,
+	I_DUPE8,
+	I_DUPE32,
+	I_DUPE64,
 
-	I_PUSHFRAME,
-	I_POPFRAME,
-	I_STORE,
-	I_STORETOP,
-	I_LOAD,
+	I_SWAP8,
+	I_SWAP32,
+	I_SWAP64,
+
+	I_COPY8,
+	I_COPY32,
+	I_COPY64,
+
+	I_STORE8,
+	I_STORE32,
+	I_STORE64,
+
+	I_LOAD8,
+	I_LOAD32,
+	I_LOAD64,
+
+	I_RET8,
+	I_RET32,
+	I_RET64,
 
 	/* Comparison instructions */
-	I_CLT,
-	I_CLE,
-	I_CEQ,
-	I_CGE,
-	I_CGT,
+	I_ICLT,
+	I_ICLE,
+	I_ICEQ,
+	I_ICGT,
+	I_ICGE,
+
+	I_FCLT,
+	I_FCLE,
+	I_FCEQ,
+	I_FCGT,
+	I_FCGE,
+
+	I_CCLT,
+	I_CCLE,
+	I_CCEQ,
+	I_CCGT,
+	I_CCGE,
 };
+
+typedef unsigned char byte;
 
 typedef struct Instruction {
 	enum InstructionKind kind;
@@ -64,8 +111,10 @@ typedef struct Instruction {
 } Instruction;
 
 typedef struct FramePointer {
-	Object *ptr;
-	Object *start;
+	byte *ptr;
+	byte *return_stack_ptr;
+	byte *start;
+	byte locals[LOCAL_SIZE];
 	struct FramePointer *prev;
 } FramePointer;
 
@@ -81,14 +130,14 @@ typedef struct LabelMap {
 } LabelMap;
 
 typedef struct Ctx {
-	Object stack[STACK_SIZE];
+	byte stack[STACK_SIZE];
+	byte return_stack[STACK_SIZE];
 	FramePointer *frame_ptr;
-	ssize_t return_offset;
 	size_t pc;
 
 	LabelMap label_map;
 
-	Instruction **instructions;
+	Instruction *instructions;
 	size_t instruction_cap;
 	size_t instruction_len;
 } Ctx;
@@ -128,127 +177,238 @@ FramePointer *context_pop_frame(Ctx *context)
 {
 	if (!context->frame_ptr->prev) return NULL;
 	FramePointer *p = context->frame_ptr;
-	Object *start = p->start;
-	Object *end = p->ptr;
-	while (end != start) {
-		// Drop any objects that have 1 or 0 references
-		if (end->ref <= 1) {
-			free(end->ptr);
-		}
-		end -= 1;
-	}
 	context->frame_ptr = context->frame_ptr->prev;
 	free(p);
 	return context->frame_ptr;
 }
 
-Instruction *process_node(Ctx *context, Node *node)
+bool process_node(Ctx *context, Node *node, Instruction *instruction)
 {
-	Instruction instruction = {0};
-
 	switch (node->kind) {
-		case N_PUSH: {
-			instruction.kind = I_PUSH;
-			instruction.data = node->data;
+		case N_POP8: {
+			instruction->kind = I_POP8;
 		} break;
-		case N_POP: {
-			instruction.kind = I_POP;
+		case N_POP32: {
+			instruction->kind = I_POP32;
 		} break;
-		case N_PRINT: {
-			instruction.kind = I_PRINT;
-			instruction.data = node->data;
+		case N_POP64: {
+			instruction->kind = I_POP64;
 		} break;
-		case N_ADD: {
-			instruction.kind = I_ADD;
+
+		case N_IPUSH: {
+			instruction->kind = I_IPUSH;
+			instruction->data = node->data;
 		} break;
-		case N_SUB: {
-			instruction.kind = I_SUB;
+		case N_IADD: {
+			instruction->kind = I_IADD;
 		} break;
-		case N_MULT: {
-			instruction.kind = I_MULT;
+		case N_ISUB: {
+			instruction->kind = I_ISUB;
 		} break;
-		case N_DIV: {
-			instruction.kind = I_DIV;
+		case N_IMULT: {
+			instruction->kind = I_IMULT;
 		} break;
+		case N_IDIV: {
+			instruction->kind = I_IDIV;
+		} break;
+		case N_IMOD: {
+			instruction->kind = I_IMOD;
+		} break;
+		case N_IPRINT: {
+			instruction->kind = I_IPRINT;
+		} break;
+
+		case N_FPUSH: {
+			instruction->kind = I_FPUSH;
+			instruction->data = node->data;
+		} break;
+		case N_FADD: {
+			instruction->kind = I_FADD;
+		} break;
+		case N_FSUB: {
+			instruction->kind = I_FSUB;
+		} break;
+		case N_FMULT: {
+			instruction->kind = I_FMULT;
+		} break;
+		case N_FDIV: {
+			instruction->kind = I_FDIV;
+		} break;
+		case N_FPRINT: {
+			instruction->kind = I_FPRINT;
+		} break;
+
+		case N_CPUSH: {
+			instruction->kind = I_CPUSH;
+			instruction->data = node->data;
+		} break;
+		case N_CADD: {
+			instruction->kind = I_CADD;
+		} break;
+		case N_CSUB: {
+			instruction->kind = I_CSUB;
+		} break;
+		case N_CMULT: {
+			instruction->kind = I_CMULT;
+		} break;
+		case N_CDIV: {
+			instruction->kind = I_CDIV;
+		} break;
+		case N_CMOD: {
+			instruction->kind = I_CMOD;
+		} break;
+		case N_CPRINT: {
+			instruction->kind = I_CPRINT;
+		} break;
+		case N_CIPRINT: {
+			instruction->kind = I_CIPRINT;
+		} break;
+
 		case N_JUMP: {
-			instruction.kind = I_JUMP;
-			instruction.data = node->data;
+			instruction->kind = I_JUMP;
+			instruction->data = node->data;
 		} break;
 		case N_JUMPCMP: {
-			instruction.kind = I_JUMPCMP;
-			instruction.data = node->data;
+			instruction->kind = I_JUMPCMP;
+			instruction->data = node->data;
 		} break;
-		case N_COPY: {
-			instruction.kind = I_COPY;
-			instruction.data = node->data;
+		case N_JUMPPROC: {
+			instruction->kind = I_JUMPPROC;
+			instruction->data = node->data;
 		} break;
-		case N_DUPE: {
-			instruction.kind = I_DUPE;
+
+		case N_COPY8: {
+			instruction->kind = I_COPY8;
+			instruction->data = node->data;
 		} break;
-		case N_SWAP: {
-			instruction.kind = I_SWAP;
+		case N_COPY32: {
+			instruction->kind = I_COPY32;
+			instruction->data = node->data;
 		} break;
-		case N_PUSHFRAME: {
-			instruction.kind = I_PUSHFRAME;
+		case N_COPY64: {
+			instruction->kind = I_COPY64;
+			instruction->data = node->data;
 		} break;
-		case N_POPFRAME: {
-			instruction.kind = I_POPFRAME;
+
+		case N_DUPE8: {
+			instruction->kind = I_DUPE8;
 		} break;
-		case N_STORE: {
-			instruction.kind = I_STORE;
-			instruction.data = node->data;
+		case N_DUPE32: {
+			instruction->kind = I_DUPE32;
 		} break;
-		case N_STORETOP: {
-			instruction.kind = I_STORETOP;
-			instruction.data = node->data;
+		case N_DUPE64: {
+			instruction->kind = I_DUPE64;
 		} break;
-		case N_LOAD: {
-			instruction.kind = I_LOAD;
-			instruction.data = node->data;
+
+		case N_SWAP8: {
+			instruction->kind = I_SWAP8;
 		} break;
-		case N_CLT: {
-			instruction.kind = I_CLT;
+		case N_SWAP32: {
+			instruction->kind = I_SWAP32;
 		} break;
-		case N_CLE: {
-			instruction.kind = I_CLE;
+		case N_SWAP64: {
+			instruction->kind = I_SWAP64;
 		} break;
-		case N_CEQ: {
-			instruction.kind = I_CEQ;
+
+		case N_STORE8: {
+			instruction->kind = I_STORE8;
+			instruction->data = node->data;
 		} break;
-		case N_CGE: {
-			instruction.kind = I_CGE;
+		case N_STORE32: {
+			instruction->kind = I_STORE32;
+			instruction->data = node->data;
 		} break;
-		case N_CGT: {
-			instruction.kind = I_CGT;
+		case N_STORE64: {
+			instruction->kind = I_STORE64;
+			instruction->data = node->data;
 		} break;
+
+		case N_LOAD8: {
+			instruction->kind = I_LOAD8;
+			instruction->data = node->data;
+		} break;
+		case N_LOAD32: {
+			instruction->kind = I_LOAD32;
+			instruction->data = node->data;
+		} break;
+		case N_LOAD64: {
+			instruction->kind = I_LOAD64;
+			instruction->data = node->data;
+		} break;
+
+		case N_RET8: {
+			instruction->kind = I_RET8;
+			instruction->data = node->data;
+		} break;
+		case N_RET32: {
+			instruction->kind = I_RET32;
+			instruction->data = node->data;
+		} break;
+		case N_RET64: {
+			instruction->kind = I_RET64;
+			instruction->data = node->data;
+		} break;
+
+		case N_ICLT: {
+			instruction->kind = I_ICLT;
+		} break;
+		case N_ICLE: {
+			instruction->kind = I_ICLE;
+		} break;
+		case N_ICEQ: {
+			instruction->kind = I_ICEQ;
+		} break;
+		case N_ICGT: {
+			instruction->kind = I_ICGT;
+		} break;
+		case N_ICGE: {
+			instruction->kind = I_ICGE;
+		} break;
+
+		case N_FCLT: {
+			instruction->kind = I_FCLT;
+		} break;
+		case N_FCLE: {
+			instruction->kind = I_FCLE;
+		} break;
+		case N_FCEQ: {
+			instruction->kind = I_FCEQ;
+		} break;
+		case N_FCGT: {
+			instruction->kind = I_FCGT;
+		} break;
+		case N_FCGE: {
+			instruction->kind = I_FCGE;
+		} break;
+
+		case N_CCLT: {
+			instruction->kind = I_CCLT;
+		} break;
+		case N_CCLE: {
+			instruction->kind = I_CCLE;
+		} break;
+		case N_CCEQ: {
+			instruction->kind = I_CCEQ;
+		} break;
+		case N_CCGT: {
+			instruction->kind = I_CCGT;
+		} break;
+		case N_CCGE: {
+			instruction->kind = I_CCGE;
+		} break;
+
 		case N_LABEL: {
 			if (!insert_label(&context->label_map, node->data.s, context->pc)) {
 				panic("Failed to create label");
 			}
-			return NULL;
+			return false;
 		} break;
 		default: {
 			panic("Unimplemented");
 		}
 	}
 
-	Instruction *instruction_heap = malloc(sizeof(Instruction));
-	memcpy(instruction_heap, &instruction, sizeof(Instruction));
-	return instruction_heap;
-}
-
-void print_stack(Ctx *context, Ty ty)
-{
-	Object *stack_ptr = context->frame_ptr->ptr;
-	stack_ptr += -1;
-	switch (ty.kind) {
-		case TY_INT: {
-			printf("%d\n", *((int *)stack_ptr->ptr));
-		} break;
-		case TY_PTR_NAME: {
-			printf("%s\n", "UNIMPLEMENTED");
-		} break;
-	}
+	return true;
 }
 
 bool empty_stack(Ctx *context)
@@ -256,224 +416,438 @@ bool empty_stack(Ctx *context)
 	return context->frame_ptr->ptr <= context->frame_ptr->start;
 }
 
-void push_stack(Ctx *context, void *data, size_t size)
+void dump_stack(Ctx *context)
 {
-	Object *obj = context->frame_ptr->ptr;
-	obj->size = size;
-	obj->ptr = malloc(size);
-	obj->ref = 1;
-	memcpy(obj->ptr, data, size);
-	context->frame_ptr->ptr += 1;
+	for (size_t i = 0; i < STACK_SIZE; ++i) {
+		fprintf(stderr, "%d,", context->stack[i]);
+	}
 }
 
-Object *pop_stack(Ctx *context)
+void push_stack(Ctx *context, void *data, size_t size)
 {
-	// TODO: Cannot trivially free because other things
-	// may be referencing this
-	//
-	// Consider reference counting
-	Object *top = --context->frame_ptr->ptr;
-	if (top->ref > 0) {
-		top->ref -= 1;
+	if (context->frame_ptr->ptr - context->stack + size >= STACK_SIZE) {
+		dump_stack(context);
+		panic("Stack overflow! Dumping stack\n");
 	}
+	byte *ptr = context->frame_ptr->ptr;
+	memcpy(ptr, data, size);
+	context->frame_ptr->ptr += size;
+}
+
+byte *pop_stack(Ctx *context, size_t n)
+{
+	context->frame_ptr->ptr -= n;
+	byte *top = context->frame_ptr->ptr;
 	return top;
 }
 
 void exec_instruction(Ctx *context, Instruction *instruction)
 {
 #define STACK_CHECK if (empty_stack(context)) goto empty_stack;
-#define SIZE_CHECK(a, b) if (a->size != b->size) goto incompatible_types;
-
 	switch (instruction->kind) {
-		case I_ADD: {
-			STACK_CHECK;
-			Object *b = pop_stack(context);
-			STACK_CHECK;
-			Object *a = pop_stack(context);
-			SIZE_CHECK(a, b);
-
-			int item = *(int *)a->ptr + *(int *)b->ptr;
-			size_t size = a->size;
-			push_stack(context, &item, size);
+		case I_CPUSH: {
+			char item = (char) instruction->data.lit.data.i;
+			push_stack(context, &item, sizeof(char));
 		} break;
-		case I_SUB: {
+		case I_CPRINT: {
 			STACK_CHECK;
-			Object *b = pop_stack(context);
-			STACK_CHECK;
-			Object *a = pop_stack(context);
-
-			SIZE_CHECK(a, b);
-
-			if (a->size != b->size) {
-				panic("Types not of same size");
-			}
-
-			int item = *(int *)a->ptr - *(int *)b->ptr;
-			size_t size = a->size;
-			push_stack(context, &item, size);
+			byte *stack_ptr = context->frame_ptr->ptr;
+			char *a = (char *)(&stack_ptr[-sizeof(char)]);
+			printf("%c", *a);
 		} break;
-		case I_CEQ: {
+		case I_CIPRINT: {
 			STACK_CHECK;
-			Object *stack_ptr = context->frame_ptr->ptr;
-			Object *b = &stack_ptr[-1];
-			Object *a = &stack_ptr[-2];
-			SIZE_CHECK(a, b);
+			byte *stack_ptr = context->frame_ptr->ptr;
+			char *a = (char *)(&stack_ptr[-sizeof(char)]);
+			printf("%d", *a);
+		} break;
 
-			// TODO: Make these char
-			int item = 1;
-			size_t size = sizeof(int);
+		case I_IPUSH: {
+			int item = instruction->data.lit.data.i;
+			push_stack(context, &item, sizeof(int));
+		} break;
+		case I_IADD: {
+			STACK_CHECK;
+			int *b = (int *)pop_stack(context, 4);
+			STACK_CHECK;
+			int *a = (int *)pop_stack(context, 4);
 
-			for (size_t i = 0; i < a->size; ++i) {
-				if (((char *)a->ptr)[i] != ((char *)b->ptr)[i]) {
-					item = 0;
-					break;
-				}
-			}
-			push_stack(context, &item, size);
+			int item = *a + *b;
+			push_stack(context, &item, sizeof(int));
 		} break;
-		case I_CLT: {
+		case I_ISUB: {
 			STACK_CHECK;
-			Object *b = pop_stack(context);
+			int *b = (int *)pop_stack(context, 4);
 			STACK_CHECK;
-			Object *a = pop_stack(context);
-			SIZE_CHECK(a, b);
+			int *a = (int *)pop_stack(context, 4);
 
-			// TODO: Make these char
-			int item = 1;
-			size_t size = sizeof(int);
+			int item = *a - *b;
+			push_stack(context, &item, sizeof(int));
+		} break;
+		case I_IMULT: {
+			STACK_CHECK;
+			int *b = (int *)pop_stack(context, 4);
+			STACK_CHECK;
+			int *a = (int *)pop_stack(context, 4);
 
-			// TODO: Borked
-			for (size_t i = 0; i < a->size; ++i) {
-				if (!(((char *)a->ptr)[i] < ((char *)b->ptr)[i])) {
-					item = 0;
-					break;
-				}
-			}
-			push_stack(context, &item, size);
+			int item = *a * *b;
+			push_stack(context, &item, sizeof(int));
 		} break;
-		case I_PRINT: {
+		case I_IDIV: {
 			STACK_CHECK;
-			print_stack(context, instruction->data.ty);
-		} break;
-		case I_PUSH: {
-			int item = instruction->data.sized.data.i;
-			size_t size = instruction->data.sized.size;
-			push_stack(context, &item, size);
-		} break;
-		case I_POP: {
+			int *b = (int *)pop_stack(context, 4);
 			STACK_CHECK;
-			pop_stack(context);
-		} break;
-		case I_SWAP: {
-			STACK_CHECK;
-			Object *stack_ptr = context->frame_ptr->ptr;
+			int *a = (int *)pop_stack(context, 4);
 
-			Object *stack_top = stack_ptr - 1;
-			Object *stack_bot = stack_ptr - 2;
-			Object *stack_tmp = stack_ptr;
+			int item = *a / *b;
+			push_stack(context, &item, sizeof(int));
+		} break;
+		case I_IMOD: {
+			STACK_CHECK;
+			int *b = (int *)pop_stack(context, 4);
+			STACK_CHECK;
+			int *a = (int *)pop_stack(context, 4);
 
-			// Temporary moves top of stack into next position
-			memcpy(stack_tmp, stack_top, sizeof(Object));
-			memcpy(stack_top, stack_bot, sizeof(Object));
-			memcpy(stack_bot, stack_tmp, sizeof(Object));
+			int item = *a % *b;
+			push_stack(context, &item, sizeof(int));
 		} break;
-		case I_DUPE: {
+		case I_IPRINT: {
 			STACK_CHECK;
-			Object *obj = context->frame_ptr->ptr;
-			memcpy(obj, obj - 1, sizeof(Object));
-			context->frame_ptr->ptr += 1;
-			obj->ref += 1;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			int *a = (int *)(&stack_ptr[-sizeof(int)]);
+			printf("%d", *a);
 		} break;
-		case I_COPY: {
+		case I_ICEQ: {
 			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			int *b = (int *)(&stack_ptr[-(sizeof(int) * 1)]);
+			int *a = (int *)(&stack_ptr[-(sizeof(int) * 2)]);
+			bool item = *a == *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ICLT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
+			int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
+			bool item = *a < *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ICLE: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
+			int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
+			bool item = *a <= *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ICGT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
+			int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
+			bool item = *a > *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ICGE: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
+			int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
+			bool item = *a >= *b;
+			push_stack(context, &item, 1);
+		} break;
+
+		case I_FPUSH: {
+			float item = instruction->data.lit.data.f;
+			push_stack(context, &item, sizeof(float));
+		} break;
+		case I_FADD: {
+			STACK_CHECK;
+			float *b = (float *)pop_stack(context, 4);
+			STACK_CHECK;
+			float *a = (float *)pop_stack(context, 4);
+
+			float item = *a + *b;
+			push_stack(context, &item, sizeof(float));
+		} break;
+		case I_FSUB: {
+			STACK_CHECK;
+			float *b = (float *)pop_stack(context, 4);
+			STACK_CHECK;
+			float *a = (float *)pop_stack(context, 4);
+
+			float item = *a - *b;
+			push_stack(context, &item, sizeof(float));
+		} break;
+		case I_FMULT: {
+			STACK_CHECK;
+			float *b = (float *)pop_stack(context, 4);
+			STACK_CHECK;
+			float *a = (float *)pop_stack(context, 4);
+
+			float item = *a * *b;
+			push_stack(context, &item, sizeof(float));
+		} break;
+		case I_FDIV: {
+			STACK_CHECK;
+			float *b = (float *)pop_stack(context, 4);
+			STACK_CHECK;
+			float *a = (float *)pop_stack(context, 4);
+
+			float item = *a / *b;
+			push_stack(context, &item, sizeof(float));
+		} break;
+		case I_FPRINT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			float *a = (float *)(&stack_ptr[-sizeof(float)]);
+			printf("%f", *a);
+		} break;
+		case I_FCEQ: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			float *b = (float *)(&stack_ptr[-(sizeof(float) * 1)]);
+			float *a = (float *)(&stack_ptr[-(sizeof(float) * 2)]);
+			bool item = *a == *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_FCLT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
+			float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
+			bool item = *a < *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_FCLE: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
+			float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
+			bool item = *a <= *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_FCGT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
+			float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
+			bool item = *a > *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_FCGE: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
+			float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
+			bool item = *a >= *b;
+			push_stack(context, &item, 1);
+		} break;
+
+		case I_POP8: {
+			STACK_CHECK;
+			pop_stack(context, 1);
+		} break;
+		case I_POP32: {
+			STACK_CHECK;
+			pop_stack(context, 4);
+		} break;
+		case I_POP64: {
+			STACK_CHECK;
+			pop_stack(context, 8);
+		} break;
+		case I_SWAP8: {
+			STACK_CHECK;
+			byte *a = pop_stack(context, 1);
+			byte *b = pop_stack(context, 1);
+			byte tmp[1] = {0};
+			memcpy(tmp, b, 1);
+			push_stack(context, a, 1);
+			push_stack(context, tmp, 1);
+		} break;
+		case I_SWAP32: {
+			STACK_CHECK;
+			byte *a = pop_stack(context, 4);
+			byte *b = pop_stack(context, 4);
+			byte tmp[4] = {0};
+			memcpy(tmp, b, 4);
+			push_stack(context, a, 4);
+			push_stack(context, tmp, 4);
+		} break;
+		case I_SWAP64: {
+			STACK_CHECK;
+			byte *a = pop_stack(context, 8);
+			byte *b = pop_stack(context, 8);
+			byte tmp[8] = {0};
+			memcpy(tmp, b, 8);
+			push_stack(context, a, 8);
+			push_stack(context, tmp, 8);
+		} break;
+		case I_DUPE8: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			byte *a = &stack_ptr[-1];
+			push_stack(context, a, 1);
+		} break;
+		case I_DUPE32: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			byte *a = &stack_ptr[-4];
+			push_stack(context, a, 4);
+		} break;
+		case I_DUPE64: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			byte *a = &stack_ptr[-8];
+			push_stack(context, a, 8);
+		} break;
+		case I_COPY8: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			byte *a = &stack_ptr[-1];
 			size_t n = instruction->data.n;
-			Object *obj = context->frame_ptr->ptr;
 			for (size_t i = 0; i < n; ++i) {
-				memcpy(obj + i, obj - i, sizeof(Object));
-				context->frame_ptr->ptr += 1;
-				obj->ref += 1;
+				push_stack(context, a, 1);
 			}
 		} break;
-		case I_PUSHFRAME: {
-			context_push_frame(context);
-		} break;
-		case I_POPFRAME: {
-			context_pop_frame(context);
-		} break;
-		case I_LOAD: {
+		case I_COPY32: {
 			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			byte *a = &stack_ptr[-4];
 			size_t n = instruction->data.n;
-			Object *start = context->frame_ptr->start;
-			Object *stack_ptr = context->frame_ptr->ptr;
-			Object *obj = &start[n];
-			memcpy(stack_ptr, obj, sizeof(Object));
-			context->frame_ptr->ptr += 1;
-			obj->ref += 1;
-		} break;
-		case I_STORE: {
-			STACK_CHECK;
-			size_t n = instruction->data.store.idx;
-			Sized sized = instruction->data.store.sized;
-			Object *start = context->frame_ptr->start;
-			Object *obj = &start[n];
-			if (obj->size != sized.size) {
-				panic("Objects not of same size\n");
+			for (size_t i = 0; i < n; ++i) {
+				push_stack(context, a, 4);
 			}
-			// Only memcpy the data because they are the same size
-			memcpy(obj->ptr, &sized.data.i, obj->size);
 		} break;
-		case I_STORETOP: {
+		case I_COPY64: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			byte *a = &stack_ptr[-8];
+			size_t n = instruction->data.n;
+			for (size_t i = 0; i < n; ++i) {
+				push_stack(context, a, 8);
+			}
+		} break;
+		case I_STORE8: {
 			STACK_CHECK;
 			size_t n = instruction->data.n;
-			Object *stack_ptr = context->frame_ptr->ptr;
-			// TODO: Uhh what if top of stack is where it stores to
-			// and it refers to self
-			Object *start = context->frame_ptr->start;
-			Object *obj = &start[n];
-			Object *top = &stack_ptr[-1];
-			SIZE_CHECK(obj, top);
-			// Only memcpy the data because they are the same size
-			memcpy(obj->ptr, top->ptr, obj->size);
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			byte *a = pop_stack(context, 1);
+			memcpy(slot, a, 1);
+		} break;
+		case I_STORE32: {
+			STACK_CHECK;
+			size_t n = instruction->data.n;
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			byte *a = pop_stack(context, 4);
+			memcpy(slot, a, 4);
+		} break;
+		case I_STORE64: {
+			STACK_CHECK;
+			size_t n = instruction->data.n;
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			byte *a = pop_stack(context, 8);
+			memcpy(slot, a, 8);
+		} break;
+		case I_LOAD8: {
+			size_t n = instruction->data.n;
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			push_stack(context, slot, 1);
+		} break;
+		case I_LOAD32: {
+			size_t n = instruction->data.n;
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			push_stack(context, slot, 4);
+		} break;
+		case I_LOAD64: {
+			size_t n = instruction->data.n;
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			push_stack(context, slot, 8);
+		} break;
+		case I_RET8: {
+			FramePointer *stack_ptr = context->frame_ptr;
+			FramePointer *stack_ptr_prev = stack_ptr->prev;
+			size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
+			byte *a = pop_stack(context, 1);
+			byte tmp[1] = {0};
+			memcpy(tmp, a, 1);
+			context->frame_ptr = stack_ptr_prev;
+			context->pc = return_addr;
+			free(stack_ptr);
+			push_stack(context, tmp, 1);
+		} break;
+		case I_RET32: {
+			FramePointer *stack_ptr = context->frame_ptr;
+			FramePointer *stack_ptr_prev = stack_ptr->prev;
+			size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
+			byte *a = pop_stack(context, 4);
+			byte tmp[4] = {0};
+			memcpy(tmp, a, 4);
+			context->frame_ptr = stack_ptr_prev;
+			context->pc = return_addr;
+			free(stack_ptr);
+			push_stack(context, tmp, 4);
+		} break;
+		case I_RET64: {
+			FramePointer *stack_ptr = context->frame_ptr;
+			FramePointer *stack_ptr_prev = stack_ptr->prev;
+			size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
+			byte *a = pop_stack(context, 8);
+			byte tmp[8] = {0};
+			memcpy(tmp, a, 8);
+			context->frame_ptr = stack_ptr_prev;
+			context->pc = return_addr;
+			free(stack_ptr);
+			push_stack(context, tmp, 8);
+		} break;
+		case I_JUMPPROC: {
+			size_t argc = instruction->data.proc.argc;
+			FramePointer *stack_ptr = context->frame_ptr;
+			FramePointer *stack_ptr_new = malloc(sizeof(FramePointer));
+			// Move previous stack frame
+			stack_ptr->ptr -= argc;
+			stack_ptr_new->ptr = stack_ptr->ptr;
+			stack_ptr_new->start = stack_ptr->start;
+			stack_ptr_new->return_stack_ptr = stack_ptr->return_stack_ptr;
+			stack_ptr_new->prev = stack_ptr;
+			context->frame_ptr = stack_ptr_new;
+			// Push pc onto return stack
+			*(size_t *)stack_ptr_new->return_stack_ptr = context->pc;
+			stack_ptr_new->return_stack_ptr += sizeof(size_t);
+
+			context->pc += instruction->data.proc.location.offset;
+			// Initial locals with args
+			memcpy(stack_ptr_new->locals, stack_ptr_new->ptr, argc);
 		} break;
 		case I_JUMP: {
 			context->pc += instruction->data.offset;
 		} break;
 		case I_JUMPCMP: {
 			STACK_CHECK;
-			Object *object = &context->frame_ptr->ptr[-1];
-			for (size_t i = 0; i < object->size; ++i) {
-				if (((char *)object->ptr)[i]) {
-					context->pc += instruction->data.offset;
-					break;
-				}
+			byte *ptr = &context->frame_ptr->ptr[-1];
+			if (*ptr) {
+				context->pc += instruction->data.offset;
+				break;
 			}
 		} break;
-		// call_func
-		// set return offset
-		// push stackframe
-
-		// return
-		// set return object
-		// pop stackframe
-		// push return object
-		// jump return offset
 		default: {
 			fprintf(stderr, "%s:%d:UNIMPLMEMENTED:%d\n", __FILE__, __LINE__, instruction->kind);
 		}
 	}
 
-
-
 	return;
 empty_stack:
 	puts("Stack is empty\n");
 	return;
-incompatible_types:
-	panic("Types not of same size");
-	return;
 
 #undef STACK_CHECK
-#undef SIZE_CHECK
 }
 
 void context_init(Ctx *context)
@@ -481,9 +855,10 @@ void context_init(Ctx *context)
 	context_push_frame(context);
 	context->frame_ptr->ptr = context->stack;
 	context->frame_ptr->start = context->stack;
+	context->frame_ptr->return_stack_ptr = context->return_stack;
 	context->frame_ptr->prev = NULL;
 
-	context->instructions = malloc(sizeof(Node *) * 16);
+	context->instructions = malloc(sizeof(*context->instructions) * 16);
 	context->instruction_cap = 16;
 	context->instruction_len = 0;
 
@@ -503,18 +878,15 @@ void context_destroy(Ctx *context)
 		context->frame_ptr = context->frame_ptr->prev;
 		free(p);
 	}
-	for (size_t i = 0; i < context->instruction_len; ++i) {
-		free(context->instructions[i]);
-	}
 	free(context->instructions);
 }
 
-void context_push_instruction(Ctx *context, Instruction *instruction)
+void context_push_instruction(Ctx *context, Instruction instruction)
 {
 	if (context->instruction_len >= context->instruction_cap) {
 		context->instruction_cap *= 2;
 		context->instructions =
-			realloc(context->instructions, sizeof(Node *) * context->instruction_cap);
+			realloc(context->instructions, sizeof(*context->instructions) * context->instruction_cap);
 	}
 	context->instructions[context->instruction_len++] = instruction;
 }
@@ -537,7 +909,7 @@ bool label_location(Ctx *context, const char *label_name, ssize_t *location)
 void begin_execution(Ctx *context)
 {
 	while (context->pc < context->instruction_len) {
-		exec_instruction(context, context->instructions[context->pc++]);
+		exec_instruction(context, &context->instructions[context->pc++]);
 	}
 }
 
@@ -548,12 +920,12 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 
 	for (Node *node = parser_next(&parser); node->kind != N_EOF; node = parser_next(&parser)) {
 		if (node->kind == N_ILLEGAL) {
-			printf("%s\n", parser.error);
+			printf("Parse failed:%s\n", parser.error);
 			break;
 		}
 
-		Instruction *instruction = process_node(context, node);
-		if (instruction) {
+		Instruction instruction = {0};
+		if (process_node(context, node, &instruction)) {
 			++context->pc;
 			context_push_instruction(context, instruction);
 		}
@@ -562,7 +934,7 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 
 	// Resolve labels
 	for (size_t i = 0; i < context->instruction_len; ++i) {
-		Instruction *instruction = context->instructions[i];
+		Instruction *instruction = &context->instructions[i];
 		if (instruction->kind == I_JUMP || instruction->kind == I_JUMPCMP) {
 			ssize_t location;
 			if (!label_location(context, instruction->data.s, &location)) {
@@ -573,8 +945,17 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 
 			instruction->data.offset = location - i - 1;
 		}
-	}
 
+		if (instruction->kind == I_JUMPPROC) {
+			ssize_t location;
+			if (!label_location(context, instruction->data.proc.location.s, &location)) {
+				// TODO: Handle better
+				printf("%s\n", instruction->data.s);
+				panic("Jump location doesn't exist\n");
+			}
+			instruction->data.proc.location.offset = location - i - 1;
+		}
+	}
 }
 
 void compile_test(void)
@@ -598,20 +979,26 @@ void compile_test(void)
 int main(int argc, char **argv)
 {
 	char *program_name = argv[0];
+	const char *path = argv[1];
+	struct stat sb = {0};
 	if (argc < 2) {
 		print_help();
 		return 1;
 	}
 
-	char s[BUF_SIZE] = {0};
-	const char *path = argv[1];
 	FILE *f = fopen(path, "rb");
 	if (!f) {
 		fprintf(stderr, "%s: cannot find %s: No such file or directory\n", program_name, path);
 		return 1;
 	}
-	size_t len = fread(s, sizeof(char), BUF_SIZE, f);
+	if (lstat(path, &sb) < 0) {
+		fprintf(stderr, "%s: failed to stat %s\n", program_name, path);
+		return 1;
+	}
+	char s[sb.st_size]; // This is NOT null terminated
+	size_t len = fread(s, sizeof(char), sb.st_size, f);
 	if (fclose(f)) panic("Failed to close file\n");
+	assert(len == (size_t)sb.st_size);
 
 	Ctx context = {0};
 	Arena *arena = arena_create(1024 * 16);

@@ -1,0 +1,14 @@
+    jump _start
+
+proc_add:
+    load32 0
+    load32 4
+    iadd
+    ret32
+
+_start:
+    ipush 1
+    ipush 2
+    jumpproc proc_add 8
+    iprint
+

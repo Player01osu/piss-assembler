@@ -1,0 +1,28 @@
+    ipush 1
+    ipush 2
+    copy32 2
+    iprint   ; Print 2
+    pop32
+
+    cpush 10
+    cprint
+    pop8
+
+    iprint   ; Print 2
+    pop32
+
+    cpush 10
+    cprint
+    pop8
+
+    iprint   ; Print 2
+    pop32
+
+    cpush 10
+    cprint
+    pop8
+
+    iprint   ; Print 1
+
+    cpush 10
+    cprint

@@ -7,35 +7,80 @@
 
 enum NodeKind {
 	/*** Instructions ***/
-	N_PUSH,
-	N_POP,
+	N_POP8,
+	N_POP32,
+	N_POP64,
 
-	N_PRINT,
+	N_IPUSH,
+	N_IADD,
+	N_ISUB,
+	N_IMULT,
+	N_IDIV,
+	N_IMOD,
+	N_IPRINT,
 
-	N_ADD,
-	N_SUB,
-	N_MULT,
-	N_DIV,
+	N_FPUSH,
+	N_FADD,
+	N_FSUB,
+	N_FMULT,
+	N_FDIV,
+	N_FPRINT,
+
+	N_CPUSH,
+	N_CADD,
+	N_CSUB,
+	N_CMULT,
+	N_CDIV,
+	N_CMOD,
+	N_CPRINT,
+	N_CIPRINT,
 
 	N_JUMP,
 	N_JUMPCMP,
+	N_JUMPPROC,
 
-	N_COPY,
-	N_DUPE,
-	N_SWAP,
+	N_DUPE8,
+	N_DUPE32,
+	N_DUPE64,
 
-	N_PUSHFRAME,
-	N_POPFRAME,
-	N_STORE,
-	N_STORETOP,
-	N_LOAD,
+	N_SWAP8,
+	N_SWAP32,
+	N_SWAP64,
+
+	N_COPY8,
+	N_COPY32,
+	N_COPY64,
+
+	N_STORE8,
+	N_STORE32,
+	N_STORE64,
+
+	N_LOAD8,
+	N_LOAD32,
+	N_LOAD64,
+
+	N_RET8,
+	N_RET32,
+	N_RET64,
 
 	/* Comparison instructions */
-	N_CLT,
-	N_CLE,
-	N_CEQ,
-	N_CGE,
-	N_CGT,
+	N_ICLT,
+	N_ICLE,
+	N_ICEQ,
+	N_ICGT,
+	N_ICGE,
+
+	N_FCLT,
+	N_FCLE,
+	N_FCEQ,
+	N_FCGT,
+	N_FCGE,
+
+	N_CCLT,
+	N_CCLE,
+	N_CCEQ,
+	N_CCGT,
+	N_CCGE,
 
 	/***/
 	N_LABEL,
@@ -44,39 +89,38 @@ enum NodeKind {
 	N_ILLEGAL,
 };
 
-enum TypeKind {
-	TY_INT,
-	TY_PTR_NAME,
+enum LitKind {
+	L_INT,
+	L_UINT,
+	L_FLOAT,
+	L_PTR,
 };
 
-union TypeData {
-	int i;
-	const char *s;
-};
+typedef struct Lit {
+	enum LitKind kind;
+	union {
+		const char *s;
+		uint64_t ui;
+		int64_t i;
+		double f;
+	} data;
+} Lit;
 
-typedef struct Ty {
-	size_t size;
-	enum TypeKind kind;
-} Ty;
+typedef struct Proc {
+	union {
+		const char *s;
+		ssize_t offset;
+	} location;
 
-typedef struct Sized {
-	size_t size; // TODO: Use Ty
-	enum TypeKind kind;
-	union TypeData data;
-} Sized;
-
-typedef struct Store {
-	size_t idx;
-	Sized sized;
-} Store;
+	size_t argc;
+} Proc;
 
 union NodeData {
 	const char *s;
 	size_t n;
 	ssize_t offset;
-	Sized sized;
-	Ty ty;
-	Store store;
+	Lit lit;
+	Proc proc;
 };
 
 typedef struct Node {

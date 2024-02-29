@@ -1,0 +1,39 @@
+    ipush 0
+    store32 0
+
+    ipush 69
+    store32 4
+
+    ipush 420
+    store32 8
+
+loop:
+    load32 0
+    ipush 10000
+    icge
+    jumpcmp loop_end
+    pop8
+    pop32
+
+    iprint
+
+    cpush 10
+    cprint
+    pop8
+
+    ipush 1
+    iadd
+    store32 0
+
+    jump loop
+loop_end:
+
+    load32 4
+    iprint
+
+    load32 8
+    iprint
+
+    cpush 10
+    cprint
+    pop8
