@@ -406,6 +406,10 @@ redo: ;
 			parse_single_stmt(parser, node, N_RET64);
 		} break;
 
+		case T_RET: {
+			parse_idx(parser, node, N_RET);
+		} break;
+
 		case T_EOF: {
 			node->kind = N_EOF;
 		} break;

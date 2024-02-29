@@ -76,6 +76,8 @@ void token_name(Token *token, char *buf)
 	PRINT_TOK("ret32", T_RET32);
 	PRINT_TOK("ret64", T_RET64);
 
+	PRINT_TOK("ret", T_RET);
+
 	PRINT_TOK("jump", T_JUMP);
 	PRINT_TOK("jumpcmp", T_JUMPCMP);
 	PRINT_TOK("jumpproc", T_JUMPPROC);
@@ -169,6 +171,8 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	CMP_TOK("ret8", T_RET8);
 	CMP_TOK("ret32", T_RET32);
 	CMP_TOK("ret64", T_RET64);
+
+	CMP_TOK("ret", T_RET);
 
 	CMP_TOK("jump", T_JUMP);
 	CMP_TOK("jumpcmp", T_JUMPCMP);

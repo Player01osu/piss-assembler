@@ -83,6 +83,8 @@ enum InstructionKind {
 	I_RET32,
 	I_RET64,
 
+	I_RET,
+
 	/* Comparison instructions */
 	I_ICLT,
 	I_ICLE,
@@ -338,14 +340,16 @@ bool process_node(Ctx *context, Node *node, Instruction *instruction)
 
 		case N_RET8: {
 			instruction->kind = I_RET8;
-			instruction->data = node->data;
 		} break;
 		case N_RET32: {
 			instruction->kind = I_RET32;
-			instruction->data = node->data;
 		} break;
 		case N_RET64: {
 			instruction->kind = I_RET64;
+		} break;
+
+		case N_RET: {
+			instruction->kind = I_RET;
 			instruction->data = node->data;
 		} break;
 
@@ -806,6 +810,19 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 			context->pc = return_addr;
 			free(stack_ptr);
 			push_stack(context, tmp, 8);
+		} break;
+		case I_RET: {
+			FramePointer *stack_ptr = context->frame_ptr;
+			FramePointer *stack_ptr_prev = stack_ptr->prev;
+			size_t n = instruction->data.n;
+			size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
+			byte *a = pop_stack(context, n);
+			byte tmp[n];
+			memcpy(tmp, a, n);
+			context->frame_ptr = stack_ptr_prev;
+			context->pc = return_addr;
+			free(stack_ptr);
+			push_stack(context, tmp, n);
 		} break;
 		case I_JUMPPROC: {
 			size_t argc = instruction->data.proc.argc;

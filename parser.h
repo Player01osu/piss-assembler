@@ -63,6 +63,8 @@ enum NodeKind {
 	N_RET32,
 	N_RET64,
 
+	N_RET,
+
 	/* Comparison instructions */
 	N_ICLT,
 	N_ICLE,

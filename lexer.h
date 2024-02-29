@@ -62,6 +62,8 @@ enum TokenKind {
 	T_RET32,
 	T_RET64,
 
+	T_RET,
+
 	/* Comparison instructions */
 	T_ICLT,
 	T_ICLE,
