@@ -975,24 +975,6 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 	}
 }
 
-void compile_test(void)
-{
-	char s[BUF_SIZE] = {0};
-	const char *path = "./examples/for_loop2.piss";
-	FILE *f = fopen(path, "rb");
-	size_t len = fread(s, sizeof(char), BUF_SIZE, f);
-	if (fclose(f)) panic("Failed to close file\n");
-
-	Ctx context = {0};
-	Arena *arena = arena_create(1024 * 16);
-	context_init(&context);
-
-	parse_src(&context, arena, s, len);
-	begin_execution(&context);
-
-	arena_destroy(arena);
-}
-
 int main(int argc, char **argv)
 {
 	char *program_name = argv[0];
