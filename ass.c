@@ -19,7 +19,12 @@
 #include "lexer.h"
 #include "parser.h"
 
-#define panic(msg) { fprintf(stderr, "%s:%d:"msg, __FILE__, __LINE__); exit(1); }
+#define panic(...) \
+	do { \
+		fprintf(FERROR, "%s:%d:", __FILE__, __LINE__); \
+		fprintf(FERROR, __VA_ARGS__); \
+		exit(1); \
+	} while (0)
 #define BUF_SIZE 1024 * 4
 #define STACK_SIZE 1024 * 16
 #define LOCAL_SIZE 256
