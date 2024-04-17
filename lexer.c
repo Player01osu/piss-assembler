@@ -110,6 +110,12 @@ void token_name(Token *token, char *buf)
 	PRINT_TOK("icgt", T_ICGT);
 	PRINT_TOK("icge", T_ICGE);
 
+	PRINT_TOK("ulclt", T_ULCLT);
+	PRINT_TOK("ulcle", T_ULCLE);
+	PRINT_TOK("ulceq", T_ULCEQ);
+	PRINT_TOK("ulcgt", T_ULCGT);
+	PRINT_TOK("ulcge", T_ULCGE);
+
 	PRINT_TOK("fclt", T_FCLT);
 	PRINT_TOK("fcle", T_FCLE);
 	PRINT_TOK("fceq", T_FCEQ);
@@ -121,6 +127,14 @@ void token_name(Token *token, char *buf)
 	PRINT_TOK("cceq", T_CCEQ);
 	PRINT_TOK("ccgt", T_CCGT);
 	PRINT_TOK("ccge", T_CCGE);
+
+	PRINT_TOK("ulpush", T_ULPUSH);
+	PRINT_TOK("uladd", T_ULADD);
+	PRINT_TOK("ulsub", T_ULSUB);
+	PRINT_TOK("ulmult", T_ULMULT);
+	PRINT_TOK("uldiv", T_ULDIV);
+	PRINT_TOK("ulmod", T_ULMOD);
+	PRINT_TOK("ulprint", T_ULPRINT);
 
 	PRINT_TOK("ipush", T_IPUSH);
 	PRINT_TOK("iadd", T_IADD);
@@ -146,12 +160,27 @@ void token_name(Token *token, char *buf)
 	PRINT_TOK("cprint", T_CPRINT);
 	PRINT_TOK("ciprint", T_CIPRINT);
 
+	PRINT_TOK("ppush", T_PPUSH);
+	PRINT_TOK("pload", T_PLOAD);
+
+	PRINT_TOK(".data", T_SECTION_DATA);
+	PRINT_TOK(".text", T_SECTION_TEXT);
+
 	PRINT_TOK("ILLEGAL", T_ILLEGAL);
 
 	if (kind == T_IDENT) {
 		sprintf(buf, "IDENT:%s", token->data.s);
 	}
 #undef PRINT_TOK
+}
+
+void lexer_fill_ident_buf(Lexer *lexer, char **p)
+{
+	while (is_ident(lexer_peak(lexer))) {
+		**p = lexer_bump(lexer);
+		++*p;
+	}
+	**p = '\0';
 }
 
 void lexer_consume_ident(Lexer *lexer, Token *token, char c)
@@ -161,10 +190,7 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	char *p = buf;
 	*p++ = c;
 
-	while (is_ident(lexer_peak(lexer))) {
-		*p++ = lexer_bump(lexer);
-	}
-	*p = '\0';
+	lexer_fill_ident_buf(lexer, &p);
 
 	CMP_TOK("pop8", T_POP8);
 	CMP_TOK("pop32", T_POP32);
@@ -206,6 +232,12 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	CMP_TOK("icgt", T_ICGT);
 	CMP_TOK("icge", T_ICGE);
 
+	CMP_TOK("ulclt", T_ULCLT);
+	CMP_TOK("ulcle", T_ULCLE);
+	CMP_TOK("ulceq", T_ULCEQ);
+	CMP_TOK("ulcgt", T_ULCGT);
+	CMP_TOK("ulcge", T_ULCGE);
+
 	CMP_TOK("fclt", T_FCLT);
 	CMP_TOK("fcle", T_FCLE);
 	CMP_TOK("fceq", T_FCEQ);
@@ -217,6 +249,14 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	CMP_TOK("cceq", T_CCEQ);
 	CMP_TOK("ccgt", T_CCGT);
 	CMP_TOK("ccge", T_CCGE);
+
+	CMP_TOK("ulpush", T_ULPUSH);
+	CMP_TOK("uladd", T_ULADD);
+	CMP_TOK("ulsub", T_ULSUB);
+	CMP_TOK("ulmult", T_ULMULT);
+	CMP_TOK("uldiv", T_ULDIV);
+	CMP_TOK("ulmod", T_ULMOD);
+	CMP_TOK("ulprint", T_ULPRINT);
 
 	CMP_TOK("ipush", T_IPUSH);
 	CMP_TOK("iadd", T_IADD);
@@ -242,6 +282,23 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	CMP_TOK("cprint", T_CPRINT);
 	CMP_TOK("ciprint", T_CIPRINT);
 
+	CMP_TOK("ppush",   T_PPUSH);
+	CMP_TOK("pload",   T_PLOAD);
+	CMP_TOK("pderef8", T_PDEREF8);
+	CMP_TOK("pderef32",T_PDEREF32);
+	CMP_TOK("pderef64",T_PDEREF64);
+	CMP_TOK("pderef",  T_PDEREF);
+	CMP_TOK("pset8",   T_PSET8);
+	CMP_TOK("pset32",  T_PSET32);
+	CMP_TOK("pset64",  T_PSET64);
+	CMP_TOK("pset",    T_PSET);
+
+	CMP_TOK("extern", T_EXTERN);
+
+	CMP_TOK("dd", T_DD);
+	CMP_TOK("dw", T_DW);
+	CMP_TOK("db", T_DB);
+
 	// Label
 	if (lexer_peak(lexer) == ':') {
 		lexer_bump(lexer);
@@ -254,42 +311,13 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	// before adding the `1 +`, but I feel like it should be
 	// correct without it...
 	size_t len = 1 + p - buf;
-	char *s = arena_alloc(lexer->arena, sizeof(char) * len);
-	memcpy(s, buf, sizeof(char) * len);
+	char *s = arena_alloc(lexer->arena, sizeof(*s) * len);
+	memcpy(s, buf, sizeof(*s) * len);
+	s[len - 1] = '\0';
 
 	token->data.s = s;
 exit: ;
 #undef CMP_TOK
-}
-
-void lexer_consume_datatype(Lexer *lexer, Token *token)
-{
-	token->kind = T_DATATYPE;
-	char buf[BUF_SIZE] = {0};
-	char *p = buf;
-
-	while (is_ident(lexer_peak(lexer))) {
-		*p++ = lexer_bump(lexer);
-	}
-	*p = '\0';
-
-	if (strncmp("int", buf, BUF_SIZE) == 0) {
-		token->data.datatype = (Datatype) {
-			.kind = TY_PRIMATIVE,
-			.data = { .primative = P_INT },
-		};
-		goto exit;
-	}
-
-	size_t len = p - buf;
-	char *s = arena_alloc(lexer->arena, sizeof(char) * len);
-	memcpy(s, buf, sizeof(char) * len);
-
-	token->data.datatype = (Datatype) {
-		.kind = TY_CUSTOM,
-		.data = { .s = s },
-	};
-exit: ;
 }
 
 bool is_num_lit(char c)
@@ -349,7 +377,7 @@ void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 	*p++ = c;
 
 	// Parse different base
-	if (c == '0' && is_valid_base(peak)) {
+	if (c == '0' && isalpha(peak)) {
 		int base = 16;
 		--p;
 		switch (peak) {
@@ -403,8 +431,131 @@ void lexer_consume_comment(Lexer *lexer)
 	while (lexer_peak(lexer) != '\n') lexer_bump(lexer);
 }
 
+typedef struct StringBuilder {
+	size_t len;
+	size_t cap;
+	char *items;
+} StringBuilder;
+
+void string_builder_init(StringBuilder *string_builder, size_t cap)
+{
+	string_builder->len = 0;
+	string_builder->cap = cap;
+	string_builder->items = malloc(sizeof(*string_builder->items) * cap);
+}
+
+void string_builder_push(StringBuilder *string_builder, char c)
+{
+	if (string_builder->len >= string_builder->cap) {
+		string_builder->cap *= 2;
+		string_builder->items = realloc(string_builder->items, string_builder->cap);
+	}
+
+	string_builder->items[string_builder->len++] = c;
+}
+
+void string_builder_build(StringBuilder *string_builder, char *buf)
+{
+	memcpy(buf, string_builder->items, string_builder->len);
+	buf[string_builder->len] = '\0';
+	free(string_builder->items);
+}
+
+void lexer_consume_string_lit(Lexer *lexer, Token *token)
+{
+	StringBuilder string_builder = {0};
+	char c = lexer_bump(lexer);
+	string_builder_init(&string_builder, 16);
+	string_builder_push(&string_builder, c);
+	token->kind = T_SLIT;
+
+	while (c != '"') {
+		if (c == '\0') {
+			// ERROR Unterminated string
+			token->kind = T_ILLEGAL;
+			goto error;
+		}
+
+		if (c == '\\') {
+			c = lexer_bump(lexer);
+
+#define T(from, to) case from: { c = to; break; }
+			switch (c) {
+				T('0', '\0'); T('a', '\a');
+				T('b', '\b'); T('t', '\t');
+				T('n', '\n'); T('\\', '\\');
+				T('\'', '\'');
+				default: {
+					// ERROR Invalid escape character
+					token->kind = T_ILLEGAL;
+					goto error;
+				}
+			}
+#undef T
+		}
+
+		string_builder_push(&string_builder, c);
+		c = lexer_bump(lexer);
+	}
+
+	char *s = arena_alloc(lexer->arena, string_builder.len + 1);
+	string_builder_build(&string_builder, s);
+	token->data.s = s;
+error: ;
+}
+
+void lexer_consume_char_lit(Lexer *lexer, Token *token)
 {
 	char c = lexer_bump(lexer);
+
+	if (c == '\\') {
+		c = lexer_bump(lexer);
+
+#define T(from, to) case from: { c = to; break; }
+		switch (c) {
+			T('0', '\0'); T('a', '\a');
+			T('b', '\b'); T('t', '\t');
+			T('n', '\n'); T('\\', '\\');
+			T('\'', '\'');
+			default: {
+				// ERROR Invalid escape character
+				token->kind = T_ILLEGAL;
+				goto error;
+			}
+		}
+#undef T
+	}
+
+	token->kind = T_INUMLIT;
+	token->data.i = c;
+
+	c = lexer_bump(lexer);
+	if (c != '\'') {
+		// ERROR Too many characters in char lit
+		token->kind = T_ILLEGAL;
+		goto error;
+	}
+error: ;
+}
+
+void lexer_consume_section(Lexer *lexer, Token *token)
+{
+#define CMP_TOK(s, tok) do { if (strncmp(s, buf, BUF_SIZE) == 0) { token->kind = tok; goto exit; } } while(0)
+	char buf[BUF_SIZE] = {0};
+	char *p = buf;
+
+	lexer_fill_ident_buf(lexer, &p);
+
+	CMP_TOK("data", T_SECTION_DATA);
+	CMP_TOK("text", T_SECTION_TEXT);
+
+	// Invalid section name
+	token->kind = T_ILLEGAL;
+exit: ;
+
+#undef CMP_TOK
+}
+
 Token *lexer_next(Lexer *lexer)
 {
 	Token *token = (Token *)arena_alloc(lexer->arena, sizeof(Token));
@@ -441,9 +592,23 @@ tailcall: ;
 		case ',': {
 			token->kind = T_COMMA;
 		} break;
-		case '@': {
-			lexer_consume_datatype(lexer, token);
+		case '[': {
+			token->kind = T_OPEN_BRACKET;
 		} break;
+		case ']': {
+			token->kind = T_CLOSE_BRACKET;
+		} break;
+		case '.': {
+			lexer_consume_section(lexer, token);
+		} break;
+
+		case '"': {
+			lexer_consume_string_lit(lexer, token);
+		} break;
+		case '\'': {
+			lexer_consume_char_lit(lexer, token);
+		} break;
+
 		case '-': {
 			lexer_consume_signed_num_lit(lexer, token, c);
 		} break;

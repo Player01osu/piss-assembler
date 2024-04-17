@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+#include "ass.h"
 #include "lexer.h"
 
 enum NodeKind {
@@ -10,6 +11,14 @@ enum NodeKind {
 	N_POP8,
 	N_POP32,
 	N_POP64,
+
+	N_ULPUSH,
+	N_ULADD,
+	N_ULSUB,
+	N_ULMULT,
+	N_ULDIV,
+	N_ULMOD,
+	N_ULPRINT,
 
 	N_IPUSH,
 	N_IADD,
@@ -34,6 +43,17 @@ enum NodeKind {
 	N_CMOD,
 	N_CPRINT,
 	N_CIPRINT,
+
+	N_PPUSH,
+	N_PLOAD,
+	N_PDEREF8,
+	N_PDEREF32,
+	N_PDEREF64,
+	N_PDEREF,
+	N_PSET8,
+	N_PSET32,
+	N_PSET64,
+	N_PSET,
 
 	N_JUMP,
 	N_JUMPCMP,
@@ -72,6 +92,12 @@ enum NodeKind {
 	N_ICGT,
 	N_ICGE,
 
+	N_ULCLT,
+	N_ULCLE,
+	N_ULCEQ,
+	N_ULCGT,
+	N_ULCGE,
+
 	N_FCLT,
 	N_FCLE,
 	N_FCEQ,
@@ -86,9 +112,17 @@ enum NodeKind {
 
 	/***/
 	N_LABEL,
+	N_DECLARATION,
 
 	N_EOF,
 	N_ILLEGAL,
+};
+
+enum DeclarationKind {
+	D_EXTERN,
+	D_DD,
+	D_DW,
+	D_DB,
 };
 
 enum LitKind {
@@ -119,12 +153,28 @@ typedef struct Proc {
 	Span span;
 } Proc;
 
+typedef struct Declaration {
+	enum DeclarationKind kind;
+	const char *ident;
+	void *bytes;
+	size_t len;
+	Span span;
+} Declaration;
+
+typedef struct DeclarationMap {
+	Declaration *declarations;
+	size_t cap;
+	size_t len;
+} DeclarationMap;
+
 union NodeData {
 	const char *s;
+	void *ptr;
 	size_t n;
 	ssize_t offset;
 	Lit lit;
 	Proc proc;
+	Declaration declaration;
 };
 
 typedef struct Node {
@@ -137,6 +187,11 @@ typedef struct Parser {
 	Lexer lexer;
 	Arena *arena;
 	char *error;
+
+	enum {
+		PARSE_DATA,
+		PARSE_TEXT,
+	} state;
 } Parser;
 
 void parser_init(Parser *parser, Arena *arena, const char *src, size_t len);

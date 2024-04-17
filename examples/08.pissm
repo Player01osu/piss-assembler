@@ -1,0 +1,31 @@
+.data
+    items dw [20]
+
+.text
+    jump _start
+
+_start:
+    ppush items
+    store64 0
+
+    ipush 69
+
+    ; Pointer arithmetic => &items[1]
+    load64 0
+    ulpush 4
+    uladd
+
+    ; Set value at items[1] to 69
+    pset32
+
+    load64 0
+    pderef32
+    iprint
+    pop32
+
+    load64 0
+    ulpush 4
+    uladd
+
+    pderef32
+    iprint

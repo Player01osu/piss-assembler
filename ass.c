@@ -18,100 +18,9 @@
 
 #include "lexer.h"
 #include "parser.h"
-
-#define FERROR stderr
-#define panic(...) \
-	do { \
-		fprintf(FERROR, "%s:%d:", __FILE__, __LINE__); \
-		fprintf(FERROR, __VA_ARGS__); \
-		exit(1); \
-	} while (0)
-#define BUF_SIZE 1024 * 4
-#define STACK_SIZE 1024 * 16
-#define LOCAL_SIZE 256
+#include "ass.h"
 
 const char *HELP = "Usage: ass [options] file ...\n";
-
-enum InstructionKind {
-	I_POP8,
-	I_POP32,
-	I_POP64,
-
-	I_IPUSH,
-	I_IADD,
-	I_ISUB,
-	I_IMULT,
-	I_IDIV,
-	I_IMOD,
-	I_IPRINT,
-
-	I_FPUSH,
-	I_FADD,
-	I_FSUB,
-	I_FMULT,
-	I_FDIV,
-	I_FPRINT,
-
-	I_CPUSH,
-	I_CADD,
-	I_CSUB,
-	I_CMULT,
-	I_CDIV,
-	I_CMOD,
-	I_CPRINT,
-	I_CIPRINT,
-
-	I_JUMP,
-	I_JUMPCMP,
-	I_JUMPPROC,
-
-	I_DUPE8,
-	I_DUPE32,
-	I_DUPE64,
-
-	I_SWAP8,
-	I_SWAP32,
-	I_SWAP64,
-
-	I_COPY8,
-	I_COPY32,
-	I_COPY64,
-
-	I_STORE8,
-	I_STORE32,
-	I_STORE64,
-
-	I_LOAD8,
-	I_LOAD32,
-	I_LOAD64,
-
-	I_RET8,
-	I_RET32,
-	I_RET64,
-
-	I_RET,
-
-	/* Comparison instructions */
-	I_ICLT,
-	I_ICLE,
-	I_ICEQ,
-	I_ICGT,
-	I_ICGE,
-
-	I_FCLT,
-	I_FCLE,
-	I_FCEQ,
-	I_FCGT,
-	I_FCGE,
-
-	I_CCLT,
-	I_CCLE,
-	I_CCEQ,
-	I_CCGT,
-	I_CCGE,
-};
-
-typedef unsigned char byte;
 
 typedef struct Instruction {
 	enum InstructionKind kind;
@@ -126,16 +35,6 @@ typedef struct FramePointer {
 	struct FramePointer *prev;
 } FramePointer;
 
-typedef struct Label {
-	const char *name;
-	size_t location;
-} Label;
-
-typedef struct LabelMap {
-	Label *labels;
-	size_t cap;
-	size_t len;
-} LabelMap;
 
 typedef struct Ctx {
 	byte stack[STACK_SIZE];
@@ -143,6 +42,7 @@ typedef struct Ctx {
 	FramePointer *frame_ptr;
 	size_t pc;
 
+	DeclarationMap declaration_map;
 	LabelMap label_map;
 
 	Instruction *instructions;
@@ -166,6 +66,17 @@ bool insert_label(LabelMap *label_map, const char *name, size_t location)
 		.name = name,
 		.location = location,
 	};
+	return true;
+}
+
+bool insert_declaration(DeclarationMap *declaration_map, Declaration declaration)
+{
+	if (declaration_map->len >= declaration_map->cap) {
+		declaration_map->cap *= 2;
+		declaration_map->declarations =
+			realloc(declaration_map->declarations, sizeof(*declaration_map->declarations) * declaration_map->cap);
+	}
+	declaration_map->declarations[declaration_map->len++] = declaration;
 	return true;
 }
 
@@ -201,6 +112,29 @@ bool process_node(Ctx *context, Node *node, Instruction *instruction)
 		} break;
 		case N_POP64: {
 			instruction->kind = I_POP64;
+		} break;
+
+		case N_ULPUSH: {
+			instruction->kind = I_ULPUSH;
+			instruction->data = node->data;
+		} break;
+		case N_ULADD: {
+			instruction->kind = I_ULADD;
+		} break;
+		case N_ULSUB: {
+			instruction->kind = I_ULSUB;
+		} break;
+		case N_ULMULT: {
+			instruction->kind = I_ULMULT;
+		} break;
+		case N_ULDIV: {
+			instruction->kind = I_ULDIV;
+		} break;
+		case N_ULMOD: {
+			instruction->kind = I_ULMOD;
+		} break;
+		case N_ULPRINT: {
+			instruction->kind = I_ULPRINT;
 		} break;
 
 		case N_IPUSH: {
@@ -270,6 +204,41 @@ bool process_node(Ctx *context, Node *node, Instruction *instruction)
 		} break;
 		case N_CIPRINT: {
 			instruction->kind = I_CIPRINT;
+		} break;
+
+		case N_PPUSH: {
+			instruction->kind = I_PPUSH;
+			instruction->data = node->data;
+		} break;
+		case N_PLOAD: {
+			instruction->kind = I_PLOAD;
+			instruction->data = node->data;
+		} break;
+		case N_PDEREF8: {
+			instruction->kind = I_PDEREF8;
+		} break;
+		case N_PDEREF32: {
+			instruction->kind = I_PDEREF32;
+		} break;
+		case N_PDEREF64: {
+			instruction->kind = I_PDEREF64;
+		} break;
+		case N_PDEREF: {
+			instruction->kind = I_PDEREF;
+			instruction->data = node->data;
+		} break;
+		case N_PSET8: {
+			instruction->kind = I_PSET8;
+		} break;
+		case N_PSET32: {
+			instruction->kind = I_PSET32;
+		} break;
+		case N_PSET64: {
+			instruction->kind = I_PSET64;
+		} break;
+		case N_PSET: {
+			instruction->kind = I_PSET;
+			instruction->data = node->data;
 		} break;
 
 		case N_JUMP: {
@@ -359,6 +328,22 @@ bool process_node(Ctx *context, Node *node, Instruction *instruction)
 			instruction->data = node->data;
 		} break;
 
+		case N_ULCLT: {
+			instruction->kind = I_ULCLT;
+		} break;
+		case N_ULCLE: {
+			instruction->kind = I_ULCLE;
+		} break;
+		case N_ULCEQ: {
+			instruction->kind = I_ULCEQ;
+		} break;
+		case N_ULCGT: {
+			instruction->kind = I_ULCGT;
+		} break;
+		case N_ULCGE: {
+			instruction->kind = I_ULCGE;
+		} break;
+
 		case N_ICLT: {
 			instruction->kind = I_ICLT;
 		} break;
@@ -413,6 +398,12 @@ bool process_node(Ctx *context, Node *node, Instruction *instruction)
 			}
 			return false;
 		} break;
+		case N_DECLARATION: {
+			if (!insert_declaration(&context->declaration_map, node->data.declaration)) {
+				panic("Failed to create declaration");
+			}
+			return false;
+		} break;
 		default: {
 			panic("Unimplemented");
 		}
@@ -444,7 +435,7 @@ void push_stack(Ctx *context, void *data, size_t size)
 	context->frame_ptr->ptr += size;
 }
 
-byte *pop_stack(Ctx *context, size_t n)
+void *pop_stack(Ctx *context, size_t n)
 {
 	context->frame_ptr->ptr -= n;
 	byte *top = context->frame_ptr->ptr;
@@ -453,27 +444,133 @@ byte *pop_stack(Ctx *context, size_t n)
 
 void exec_instruction(Ctx *context, Instruction *instruction)
 {
-#define STACK_CHECK if (empty_stack(context)) goto empty_stack;
+#define STACK_CHECK do { if (empty_stack(context)) goto empty_stack; } while(0)
 	switch (instruction->kind) {
 		case I_CPUSH: {
-			char item = (char) instruction->data.lit.data.i;
-			push_stack(context, &item, sizeof(char));
+			char item = (char)instruction->data.lit.data.i;
+			push_stack(context, &item, sizeof(item));
 		} break;
 		case I_CPRINT: {
 			STACK_CHECK;
 			byte *stack_ptr = context->frame_ptr->ptr;
-			char *a = (char *)(&stack_ptr[-sizeof(char)]);
+			char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 			printf("%c", *a);
 		} break;
 		case I_CIPRINT: {
 			STACK_CHECK;
 			byte *stack_ptr = context->frame_ptr->ptr;
-			char *a = (char *)(&stack_ptr[-sizeof(char)]);
+			char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 			printf("%d", *a);
 		} break;
 
+		case I_PPUSH: {
+			void *item = instruction->data.ptr;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_PLOAD: {
+			void *data_ptr = instruction->data.ptr;
+			push_stack(context, &data_ptr, sizeof(data_ptr));
+
+			size_t n = instruction->data.n;
+			byte *locals = context->frame_ptr->locals;
+			byte *slot = &locals[n];
+			push_stack(context, &slot, sizeof(slot));
+		} break;
+		case I_PDEREF8: {
+			STACK_CHECK;
+			char **item = pop_stack(context, sizeof(*item));
+			push_stack(context, *item, sizeof(**item));
+		} break;
+		case I_PDEREF32: {
+			STACK_CHECK;
+			int **item = pop_stack(context, sizeof(*item));
+			push_stack(context, *item, sizeof(**item));
+		} break;
+		case I_PDEREF64: {
+			STACK_CHECK;
+			long **item = pop_stack(context, sizeof(*item));
+			push_stack(context, *item, sizeof(**item));
+		} break;
+		case I_PSET8: {
+			STACK_CHECK;
+			char **a = pop_stack(context, sizeof(*a));
+			STACK_CHECK;
+			char *b = pop_stack(context, sizeof(*b));
+			**a = *b;
+		} break;
+		case I_PSET32: {
+			STACK_CHECK;
+			int **a = pop_stack(context, sizeof(*a));
+			STACK_CHECK;
+			int *b = pop_stack(context, sizeof(*b));
+			**a = *b;
+		} break;
+		case I_PSET64: {
+			STACK_CHECK;
+			long **a = pop_stack(context, sizeof(*a));
+			STACK_CHECK;
+			long *b = pop_stack(context, sizeof(*b));
+			**a = *b;
+		} break;
+
+		case I_ULPUSH: {
+			uint64_t item = instruction->data.lit.data.i;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_ULADD: {
+			STACK_CHECK;
+			unsigned long *b = pop_stack(context, sizeof(*b));
+			STACK_CHECK;
+			unsigned long *a = pop_stack(context, sizeof(*a));
+
+			unsigned long item = *a + *b;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_ULSUB: {
+			STACK_CHECK;
+			unsigned long *b = pop_stack(context, sizeof(*b));
+			STACK_CHECK;
+			unsigned long *a = pop_stack(context, sizeof(*a));
+
+			unsigned long item = *a - *b;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_ULMULT: {
+			STACK_CHECK;
+			unsigned long *b = pop_stack(context, sizeof(*b));
+			STACK_CHECK;
+			unsigned long *a = pop_stack(context, sizeof(*a));
+
+			unsigned long item = *a * *b;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_ULDIV: {
+			STACK_CHECK;
+			unsigned long *b = pop_stack(context, sizeof(*b));
+			STACK_CHECK;
+			unsigned long *a = pop_stack(context, sizeof(*a));
+
+			unsigned long item = *a / *b;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_ULMOD: {
+			STACK_CHECK;
+			unsigned long *b = pop_stack(context, sizeof(*b));
+			STACK_CHECK;
+			unsigned long *a = pop_stack(context, sizeof(*a));
+
+			unsigned long item = *a % *b;
+			push_stack(context, &item, sizeof(item));
+		} break;
+		case I_ULPRINT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			unsigned long *a = (unsigned long *)(&stack_ptr[-sizeof(*a)]);
+			printf("%lu", *a);
+		} break;
+
 		case I_IPUSH: {
-			int item = instruction->data.lit.data.i;
+			uint64_t item = instruction->data.lit.data.i;
 			push_stack(context, &item, sizeof(int));
 		} break;
 		case I_IADD: {
@@ -524,7 +621,7 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		case I_IPRINT: {
 			STACK_CHECK;
 			byte *stack_ptr = context->frame_ptr->ptr;
-			int *a = (int *)(&stack_ptr[-sizeof(int)]);
+			int *a = (int *)&stack_ptr[-sizeof(*a)];
 			printf("%d", *a);
 		} break;
 		case I_ICEQ: {
@@ -535,6 +632,40 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 			bool item = *a == *b;
 			push_stack(context, &item, 1);
 		} break;
+
+		case I_ULCLT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
+			unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
+			bool item = *a < *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ULCLE: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
+			unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
+			bool item = *a <= *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ULCGT: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
+			unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
+			bool item = *a > *b;
+			push_stack(context, &item, 1);
+		} break;
+		case I_ULCGE: {
+			STACK_CHECK;
+			byte *stack_ptr = context->frame_ptr->ptr;
+			unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
+			unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
+			bool item = *a >= *b;
+			push_stack(context, &item, 1);
+		} break;
+
 		case I_ICLT: {
 			STACK_CHECK;
 			byte *stack_ptr = context->frame_ptr->ptr;
@@ -886,7 +1017,13 @@ void context_init(Ctx *context)
 	context->instruction_len = 0;
 
 	context->label_map = (LabelMap){
-		.labels = malloc(sizeof(Label) * 16),
+		.labels = malloc(sizeof(*context->label_map.labels) * 16),
+		.cap = 16,
+		.len = 0,
+	};
+
+	context->declaration_map = (DeclarationMap){
+		.declarations = malloc(sizeof(*context->declaration_map.declarations) * 16),
 		.cap = 16,
 		.len = 0,
 	};
@@ -929,6 +1066,20 @@ bool label_location(Ctx *context, const char *label_name, ssize_t *location)
 	return false;
 }
 
+bool resolve_load(Ctx *context, const char *data_name, void **data_ptr)
+{
+	DeclarationMap *declaration_map = &context->declaration_map;
+	for (size_t i = 0; i < declaration_map->len; ++i) {
+		Declaration *declaration = &declaration_map->declarations[i];
+		// TODO: Intern
+		if (strcmp(data_name, declaration->ident) == 0) {
+			*data_ptr = declaration->bytes;
+			return true;
+		}
+	}
+	return false;
+}
+
 void begin_execution(Ctx *context)
 {
 	while (context->pc < context->instruction_len) {
@@ -936,7 +1087,7 @@ void begin_execution(Ctx *context)
 	}
 }
 
-void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
+void parse_src(Ctx *context, Arena *arena, const char *filename, const char *src, const size_t len)
 {
 	Parser parser = {0};
 	parser_init(&parser, arena, src, len);
@@ -962,8 +1113,7 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 			ssize_t location;
 			if (!label_location(context, instruction->data.s, &location)) {
 				// TODO: Handle better
-				printf("%s\n", instruction->data.s);
-				panic("Jump location doesn't exist\n");
+				panic("%s:Jump location doesn't exist\n", instruction->data.s);
 			}
 
 			instruction->data.offset = location - i - 1;
@@ -973,10 +1123,18 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 			ssize_t location;
 			if (!label_location(context, instruction->data.proc.location.s, &location)) {
 				// TODO: Handle better
-				printf("%s\n", instruction->data.s);
-				panic("Jump location doesn't exist\n");
+				panic("%s:Jump location doesn't exist\n", instruction->data.s);
 			}
 			instruction->data.proc.location.offset = location - i - 1;
+		}
+
+		if (instruction->kind == I_PPUSH) {
+			void *data_ptr;
+			if (!resolve_load(context, instruction->data.lit.data.s, &data_ptr)) {
+				// TODO: Handle better
+				panic("%s:Data name does not exist\n", instruction->data.lit.data.s);
+			}
+			instruction->data.ptr = data_ptr;
 		}
 	}
 }
@@ -1006,10 +1164,10 @@ int main(int argc, char **argv)
 	assert(len == (size_t)sb.st_size);
 
 	Ctx context = {0};
-	Arena *arena = arena_create(1024 * 16);
+	Arena *arena = arena_create(1024 * 32);
 	context_init(&context);
 
-	parse_src(&context, arena, s, len);
+	parse_src(&context, arena, path, s, len);
 	begin_execution(&context);
 
 	return 0;

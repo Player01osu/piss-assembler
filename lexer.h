@@ -10,6 +10,14 @@ enum TokenKind {
 	T_POP32,
 	T_POP64,
 
+	T_ULPUSH,
+	T_ULADD,
+	T_ULSUB,
+	T_ULMULT,
+	T_ULDIV,
+	T_ULMOD,
+	T_ULPRINT,
+
 	T_IPUSH,
 	T_IADD,
 	T_ISUB,
@@ -33,6 +41,17 @@ enum TokenKind {
 	T_CMOD,
 	T_CPRINT,
 	T_CIPRINT,
+
+	T_PPUSH,
+	T_PLOAD,
+	T_PDEREF8,
+	T_PDEREF32,
+	T_PDEREF64,
+	T_PDEREF,
+	T_PSET8,
+	T_PSET32,
+	T_PSET64,
+	T_PSET,
 
 	T_JUMP,
 	T_JUMPCMP,
@@ -71,6 +90,12 @@ enum TokenKind {
 	T_ICGT,
 	T_ICGE,
 
+	T_ULCLT,
+	T_ULCLE,
+	T_ULCEQ,
+	T_ULCGT,
+	T_ULCGE,
+
 	T_FCLT,
 	T_FCLE,
 	T_FCEQ,
@@ -87,35 +112,29 @@ enum TokenKind {
 
 	T_DATATYPE,
 	T_LABEL,
+	T_SECTION_DATA,
+	T_SECTION_TEXT,
 	T_IDENT,
 
 	T_UINUMLIT, // Unsigned int literal (8-bytes)
 	T_INUMLIT,  // Signed int literal   (8-bytes)
 	T_FNUMLIT,  // Double               (8-bytes)
+	T_SLIT,     // String literal
+
+	T_DD,
+	T_DW,
+	T_DB,
+
+	T_EXTERN,
 
 	T_COMMA,
+	T_OPEN_BRACKET,
+	T_CLOSE_BRACKET,
 	T_EOL,
 	T_EOF,
 	T_ILLEGAL,
 };
 
-enum DatatypeKind {
-	TY_PRIMATIVE,
-	TY_CUSTOM,
-};
-
-enum Primative {
-	P_INT,
-	P_FLOAT,
-};
-
-typedef struct Datatype {
-	enum DatatypeKind kind;
-	union {
-		enum Primative primative;
-		char *s;
-	} data;
-} Datatype;
 typedef struct Span {
 	size_t start_row;
 	size_t start_col;
@@ -129,7 +148,6 @@ union TokenData {
 	int64_t i;
 	double f;
 	size_t t_size;
-	Datatype datatype;
 };
 
 typedef struct Token {

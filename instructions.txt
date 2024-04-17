@@ -31,6 +31,17 @@ cmod                     Pops two and pushes their modulo
 cprint                   Print top of stack as ASCII char
 ciprint                  Print top of stack as 8-bit integer
 
+ppush(ident)             Push address of datasection onto stack
+pload(i)                 Loads address of local to top of stack
+pderef8                  Dereference 1 byte pointer and push to top of stack
+pderef32                 Dereference 4 byte pointer and push to top of stack
+pderef64                 Dereference 8 byte pointer and push to top of stack
+pderef(n)                Dereference n byte pointer and push to top of stack
+pset8                    Dereference and set 1 byte using the address at top of stack
+pset32                   Dereference and set 4 byte using the address at top of stack
+pset64                   Dereference and set 8 byte using the address at top of stack
+pset(n)                  Dereference and set n byte using the address at top of stack
+
 jump(label)              Jumps to address in memory
 jumpcmp(label)           Jumps if top of stack is non-zero
 jumpproc(label, nargs)   Enters procedure with new stackframe, pushing the call
@@ -59,7 +70,7 @@ copy8(n)                 Copies n 8 byte elements from top of stack
 copy32(n)                Copies n 32 byte elements from top of stack
 copy64(n)                Copies n 64 byte elements from top of stack
 
-ret8(i)                  resume execution
+ret                      resume execution
 ret8(i)                  Push 1 byte at index onto return stack and resuming execution
 ret32(i)                 Push 4 bytes at index onto return stack and resuming execution
 ret64(i)                 Push 8 bytes at index onto return stack and resuming execution
