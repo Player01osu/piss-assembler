@@ -383,9 +383,9 @@ void lexer_consume_comment(Lexer *lexer)
 
 Token *lexer_next(Lexer *lexer)
 {
-redo: ;
 	char c = lexer_bump(lexer);
 	Token *token = (Token *)arena_alloc(lexer->arena, sizeof(Token));
+tailcall: ;
 
 	if (c == '\0') {
 		token->kind = T_EOF;
@@ -404,13 +404,13 @@ redo: ;
 
 	switch (c) {
 		case '\t':
-		case ' ': goto redo;
+		case ' ': goto tailcall;
 		case '\n': {
 			token->kind = T_EOL;
 		} break;
 		case ';': {
 			lexer_consume_comment(lexer);
-			goto redo;
+			goto tailcall;
 		} break;
 		case ',': {
 			token->kind = T_COMMA;
@@ -430,5 +430,11 @@ redo: ;
 
 error:
 exit:
+	token->span = (Span) {
+		.start_row = start_row + 1,
+		.start_col = start_col + 1,
+		.end_row = lexer->prev_row + 1,
+		.end_col = lexer->prev_col + 1,
+	};
 	return token;
 }
