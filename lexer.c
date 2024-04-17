@@ -190,7 +190,7 @@ void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 			default: {
 				// Invalid literal base (0x)
 				token->kind = T_ILLEGAL;
-				goto error;
+				return;
 			}
 		}
 
@@ -225,7 +225,6 @@ void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 		token->kind = T_UINUMLIT;
 		token->data.ui = ui;
 	}
-error: ;
 }
 
 void lexer_consume_comment(Lexer *lexer)
@@ -275,7 +274,7 @@ void lexer_consume_string_lit(Lexer *lexer, Token *token)
 		if (c == '\0') {
 			// ERROR Unterminated string
 			token->kind = T_ILLEGAL;
-			goto error;
+			return;
 		}
 
 		if (c == '\\') {
@@ -290,7 +289,7 @@ void lexer_consume_string_lit(Lexer *lexer, Token *token)
 				default: {
 					// ERROR Invalid escape character
 					token->kind = T_ILLEGAL;
-					goto error;
+					return;
 				}
 			}
 #undef T
@@ -303,7 +302,6 @@ void lexer_consume_string_lit(Lexer *lexer, Token *token)
 	char *s = arena_alloc(lexer->arena, string_builder.len + 1);
 	string_builder_build(&string_builder, s);
 	token->data.s = s;
-error: ;
 }
 
 void lexer_consume_char_lit(Lexer *lexer, Token *token)
@@ -322,7 +320,7 @@ void lexer_consume_char_lit(Lexer *lexer, Token *token)
 			default: {
 				// ERROR Invalid escape character
 				token->kind = T_ILLEGAL;
-				goto error;
+				return;
 			}
 		}
 #undef T
@@ -335,9 +333,8 @@ void lexer_consume_char_lit(Lexer *lexer, Token *token)
 	if (c != '\'') {
 		// ERROR Too many characters in char lit
 		token->kind = T_ILLEGAL;
-		goto error;
+		return;
 	}
-error: ;
 }
 
 void lexer_consume_section(Lexer *lexer, Token *token)
