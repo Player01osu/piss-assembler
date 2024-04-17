@@ -106,6 +106,7 @@ typedef struct Lit {
 		int64_t i;
 		double f;
 	} data;
+	Span span;
 } Lit;
 
 typedef struct Proc {
@@ -115,6 +116,7 @@ typedef struct Proc {
 	} location;
 
 	size_t argc;
+	Span span;
 } Proc;
 
 union NodeData {
@@ -128,6 +130,7 @@ union NodeData {
 typedef struct Node {
 	enum NodeKind kind;
 	union NodeData data;
+	Span span;
 } Node;
 
 typedef struct Parser {

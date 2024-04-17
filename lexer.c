@@ -1,13 +1,25 @@
-#include <stdbool.h>
+#include <assert.h>
 #include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "lexer.h"
 #include "arena.h"
 
 #define panic(msg) { fprintf(stderr, "%s:%d:"msg, __FILE__, __LINE__); exit(1); }
+
+Span span_join(Span a, Span b)
+{
+	assert(a.start_row < b.start_row || (a.start_row == b.start_row && a.start_col <= b.start_col));
+	return (Span) {
+		.start_row = a.start_row,
+		.start_col = a.start_col,
+		.end_row = b.end_row,
+		.end_col = b.end_col,
+	};
+}
 
 bool is_ident(char c)
 {
@@ -28,6 +40,16 @@ void lexer_init(Lexer *lexer, Arena *arena, const char *src, size_t len)
 char lexer_bump(Lexer *lexer)
 {
 	if (lexer->remaining <= 0) return '\0';
+
+	lexer->prev_row = lexer->row;
+	lexer->prev_col = lexer->col;
+
+	if (*lexer->cursor == '\n') {
+		++lexer->row;
+		lexer->col = 0;
+	} else {
+		++lexer->col;
+	}
 
 	--lexer->remaining;
 	return *lexer->cursor++;
@@ -381,11 +403,15 @@ void lexer_consume_comment(Lexer *lexer)
 	while (lexer_peak(lexer) != '\n') lexer_bump(lexer);
 }
 
-Token *lexer_next(Lexer *lexer)
 {
 	char c = lexer_bump(lexer);
+Token *lexer_next(Lexer *lexer)
+{
 	Token *token = (Token *)arena_alloc(lexer->arena, sizeof(Token));
 tailcall: ;
+	char c = lexer_bump(lexer);
+	size_t start_row = lexer->row;
+	size_t start_col = lexer->col;
 
 	if (c == '\0') {
 		token->kind = T_EOF;

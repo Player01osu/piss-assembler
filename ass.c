@@ -943,7 +943,7 @@ void parse_src(Ctx *context, Arena *arena, char *src, size_t len)
 
 	for (Node *node = parser_next(&parser); node->kind != N_EOF; node = parser_next(&parser)) {
 		if (node->kind == N_ILLEGAL) {
-			printf("Parse failed:%s\n", parser.error);
+			printf("%s:%zu:%zu:Parse failed:%s\n", filename, node->span.start_row, node->span.start_col, parser.error);
 			break;
 		}
 

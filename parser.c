@@ -25,29 +25,34 @@ Token *parser_expect(Parser *parser, enum TokenKind kind)
 	else                     return NULL;
 }
 
-#define parser_err(parser, msg) do { \
-	size_t len = strlen(msg) + 1; \
-	char *_s = (char *) arena_alloc(parser->arena, len); \
-	memcpy(_s, msg, len); \
-	parser->error = _s; \
-} while(0)
+#define parser_err(parser, msg)                                      \
+	do {                                                         \
+		size_t len = strlen(msg) + 1;                        \
+		char *_s = (char *) arena_alloc(parser->arena, len); \
+		memcpy(_s, msg, len);                                \
+		parser->error = _s;                                  \
+	} while (0)
 
-#define single_stmt_expect(parser, node_kind)             \
-	Token *next = parser_bump(parser);                \
-	if (next->kind != T_EOL && next->kind != T_EOF) { \
-		node->kind = N_ILLEGAL;                   \
-		char __s[128]; \
-		sprintf(__s, "%s:Expected eol\n", __func__); \
-		parser_err(parser, __s);   \
-		goto fail;                                \
-	}                                                 \
-	node->kind = node_kind;                           \
-fail: ;
+#define single_stmt_expect(parser, node_kind)                        \
+	do {                                                         \
+		Token *next = parser_bump(parser);                   \
+		if (next->kind != T_EOL && next->kind != T_EOF) {    \
+			node->kind = N_ILLEGAL;                      \
+			char __s[128];                               \
+			sprintf(__s, "%s:Expected eol\n", __func__); \
+			parser_err(parser, __s);                     \
+			goto fail;                                   \
+		}                                                    \
+		node->kind = node_kind;                              \
+		node->span = span_join(node->span, next->span);      \
+		fail: ;                                              \
+	} while (0)
 
 void parse_push(Parser *parser, Node *node, enum NodeKind kind)
 {
 	Token *next = parser_bump(parser);
 	Lit *lit = &node->data.lit;
+	node->span = span_join(node->span, next->span);
 	node->kind = kind;
 
 	if (next->kind == T_INUMLIT) {
@@ -81,7 +86,9 @@ fail: ;
 void parse_idx(Parser *parser, Node *node, enum NodeKind kind)
 {
 	Token *next = parser_bump(parser);
+	node->span = span_join(node->span, next->span);
 	node->kind = kind;
+	node->span = next->span;
 
 	if (next->kind == T_UINUMLIT) {
 		node->data.n = next->data.ui;
@@ -109,6 +116,7 @@ void parse_single_stmt(Parser *parser, Node *node, enum NodeKind kind)
 void parse_jump(Parser *parser, Node *node)
 {
 	Token *next = parser_bump(parser);
+	node->span = span_join(node->span, next->span);
 	if (next->kind != T_IDENT) {
 		node->kind = N_ILLEGAL;
 		parser_err(parser, "Expected label");
@@ -133,6 +141,7 @@ fail: ;
 void parse_jumpcmp(Parser *parser, Node *node, enum NodeKind kind)
 {
 	Token *next = parser_bump(parser);
+	node->span = span_join(node->span, next->span);
 	if (next->kind != T_IDENT) {
 		node->kind = N_ILLEGAL;
 		parser_err(parser, "Expected label");
@@ -156,9 +165,10 @@ fail: ;
 
 void parse_jumpproc(Parser *parser, Node *node)
 {
-	node->kind = N_JUMPPROC;
-
 	Token *next = parser_bump(parser);
+	node->kind = N_JUMPPROC;
+	node->span = span_join(node->span, next->span);
+
 	if (next->kind == T_IDENT) {
 		node->data.proc.location.s = next->data.s;
 	} else {
@@ -168,6 +178,7 @@ void parse_jumpproc(Parser *parser, Node *node)
 	}
 
 	next = parser_bump(parser);
+	node->span = span_join(node->span, next->span);
 	if (next->kind == T_UINUMLIT) {
 		node->data.proc.argc = next->data.ui;
 	} else {
@@ -190,6 +201,7 @@ void parse_label(Parser *parser, Token *token, Node *node)
 {
 	Token *next = parser_bump(parser);
 	if (next->kind != T_EOL && next->kind != T_EOF) {
+	node->span = span_join(node->span, token->span);
 		node->kind = N_ILLEGAL;
 		char __s[256];
 		sprintf(__s, "%s:Expected eol\n", __func__);
@@ -207,6 +219,7 @@ redo: ;
 	Node *node = arena_alloc(parser->arena, sizeof(Node));
 	Token *token = parser_bump(parser);
 
+	node->span = token->span;
 	switch (token->kind) {
 		case T_IPUSH: {
 			parse_push(parser, node, N_IPUSH);

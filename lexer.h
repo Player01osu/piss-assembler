@@ -116,6 +116,12 @@ typedef struct Datatype {
 		char *s;
 	} data;
 } Datatype;
+typedef struct Span {
+	size_t start_row;
+	size_t start_col;
+	size_t end_row;
+	size_t end_col;
+} Span;
 
 union TokenData {
 	const char *s;
@@ -129,7 +135,7 @@ union TokenData {
 typedef struct Token {
 	enum TokenKind kind;
 	union TokenData data;
-	// TODO: Add span
+	Span span;
 } Token;
 
 typedef struct Lexer {
@@ -139,6 +145,8 @@ typedef struct Lexer {
 	size_t len;
 	size_t remaining;
 
+	size_t prev_col;
+	size_t prev_row;
 	size_t col;
 	size_t row;
 
@@ -150,5 +158,7 @@ void token_name(Token *token, char *buf);
 void lexer_init(Lexer *lexer, Arena *arena, const char *src, size_t len);
 
 Token *lexer_next(Lexer *lexer);
+
+Span span_join(Span a, Span b);
 
 #endif // LEXER_H
