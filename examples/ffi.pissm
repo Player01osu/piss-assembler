@@ -8,4 +8,4 @@
     ppush msg
     store64 1
     load64 1
-    jumpproc printf
+    jumpproc printf 8

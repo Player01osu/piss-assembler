@@ -13,14 +13,14 @@
 .text
     ppush path
     ppush mode
-    jumpproc fopen 2
+    jumpproc fopen 16
     store64 0
 
     ppush msg
     ulpush 1
     ulpush len
     load64 0
-    jumpproc fwrite 4
+    jumpproc fwrite 32
 
     load64 0
-    jumpproc fclose 1
+    jumpproc fclose 8
