@@ -65,113 +65,16 @@ char lexer_peak(Lexer *lexer)
 
 void token_name(Token *token, char *buf)
 {
-#define PRINT_TOK(s, k) do { \
-	if (kind == k) { sprintf(buf, "%s", s); } \
-	} while(0)
 	enum TokenKind kind = token->kind;
 
-	PRINT_TOK("pop8", T_POP8);
-	PRINT_TOK("pop32", T_POP32);
-	PRINT_TOK("pop64", T_POP64);
-
-	PRINT_TOK("dupe8", T_DUPE8);
-	PRINT_TOK("dupe32", T_DUPE32);
-	PRINT_TOK("dupe64", T_DUPE64);
-
-	PRINT_TOK("swap8", T_SWAP8);
-	PRINT_TOK("swap32", T_SWAP32);
-	PRINT_TOK("swap64", T_SWAP64);
-
-	PRINT_TOK("copy8", T_COPY8);
-	PRINT_TOK("copy32", T_COPY32);
-	PRINT_TOK("copy64", T_COPY64);
-
-	PRINT_TOK("store8", T_STORE8);
-	PRINT_TOK("store32", T_STORE32);
-	PRINT_TOK("store64", T_STORE64);
-
-	PRINT_TOK("load8", T_LOAD8);
-	PRINT_TOK("load32", T_LOAD32);
-	PRINT_TOK("load64", T_LOAD64);
-
-	PRINT_TOK("ret8", T_RET8);
-	PRINT_TOK("ret32", T_RET32);
-	PRINT_TOK("ret64", T_RET64);
-
-	PRINT_TOK("ret", T_RET);
-
-	PRINT_TOK("jump", T_JUMP);
-	PRINT_TOK("jumpcmp", T_JUMPCMP);
-	PRINT_TOK("jumpproc", T_JUMPPROC);
-
-	PRINT_TOK("iclt", T_ICLT);
-	PRINT_TOK("icle", T_ICLE);
-	PRINT_TOK("iceq", T_ICEQ);
-	PRINT_TOK("icgt", T_ICGT);
-	PRINT_TOK("icge", T_ICGE);
-
-	PRINT_TOK("ulclt", T_ULCLT);
-	PRINT_TOK("ulcle", T_ULCLE);
-	PRINT_TOK("ulceq", T_ULCEQ);
-	PRINT_TOK("ulcgt", T_ULCGT);
-	PRINT_TOK("ulcge", T_ULCGE);
-
-	PRINT_TOK("fclt", T_FCLT);
-	PRINT_TOK("fcle", T_FCLE);
-	PRINT_TOK("fceq", T_FCEQ);
-	PRINT_TOK("fcgt", T_FCGT);
-	PRINT_TOK("fcge", T_FCGE);
-
-	PRINT_TOK("cclt", T_CCLT);
-	PRINT_TOK("ccle", T_CCLE);
-	PRINT_TOK("cceq", T_CCEQ);
-	PRINT_TOK("ccgt", T_CCGT);
-	PRINT_TOK("ccge", T_CCGE);
-
-	PRINT_TOK("ulpush", T_ULPUSH);
-	PRINT_TOK("uladd", T_ULADD);
-	PRINT_TOK("ulsub", T_ULSUB);
-	PRINT_TOK("ulmult", T_ULMULT);
-	PRINT_TOK("uldiv", T_ULDIV);
-	PRINT_TOK("ulmod", T_ULMOD);
-	PRINT_TOK("ulprint", T_ULPRINT);
-
-	PRINT_TOK("ipush", T_IPUSH);
-	PRINT_TOK("iadd", T_IADD);
-	PRINT_TOK("isub", T_ISUB);
-	PRINT_TOK("imult", T_IMULT);
-	PRINT_TOK("idiv", T_IDIV);
-	PRINT_TOK("imod", T_IMOD);
-	PRINT_TOK("iprint", T_IPRINT);
-
-	PRINT_TOK("fpush", T_FPUSH);
-	PRINT_TOK("fadd", T_FADD);
-	PRINT_TOK("fsub", T_FSUB);
-	PRINT_TOK("fmult", T_FMULT);
-	PRINT_TOK("fdiv", T_FDIV);
-	PRINT_TOK("fprint", T_FPRINT);
-
-	PRINT_TOK("cpush", T_CPUSH);
-	PRINT_TOK("cadd", T_CADD);
-	PRINT_TOK("csub", T_CSUB);
-	PRINT_TOK("cmult", T_CMULT);
-	PRINT_TOK("cdiv", T_CDIV);
-	PRINT_TOK("cmod", T_CMOD);
-	PRINT_TOK("cprint", T_CPRINT);
-	PRINT_TOK("ciprint", T_CIPRINT);
-
-	PRINT_TOK("ppush", T_PPUSH);
-	PRINT_TOK("pload", T_PLOAD);
-
-	PRINT_TOK(".data", T_SECTION_DATA);
-	PRINT_TOK(".text", T_SECTION_TEXT);
-
-	PRINT_TOK("ILLEGAL", T_ILLEGAL);
+#define TOK(tok) if (kind == tok) sprintf(buf, #tok);
+#include "tokens.h"
+TOK(T_ILLEGAL)
+#undef TOK
 
 	if (kind == T_IDENT) {
 		sprintf(buf, "IDENT:%s", token->data.s);
 	}
-#undef PRINT_TOK
 }
 
 void lexer_fill_ident_buf(Lexer *lexer, char **p)
@@ -185,119 +88,19 @@ void lexer_fill_ident_buf(Lexer *lexer, char **p)
 
 void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 {
-#define CMP_TOK(s, tok) do { if (strncmp(s, buf, BUF_SIZE) == 0) { token->kind = tok; goto exit; } } while(0)
 	char buf[BUF_SIZE] = {0};
 	char *p = buf;
 	*p++ = c;
 
 	lexer_fill_ident_buf(lexer, &p);
 
-	CMP_TOK("pop8", T_POP8);
-	CMP_TOK("pop32", T_POP32);
-	CMP_TOK("pop64", T_POP64);
-
-	CMP_TOK("dupe8", T_DUPE8);
-	CMP_TOK("dupe32", T_DUPE32);
-	CMP_TOK("dupe64", T_DUPE64);
-
-	CMP_TOK("swap8", T_SWAP8);
-	CMP_TOK("swap32", T_SWAP32);
-	CMP_TOK("swap64", T_SWAP64);
-
-	CMP_TOK("copy8", T_COPY8);
-	CMP_TOK("copy32", T_COPY32);
-	CMP_TOK("copy64", T_COPY64);
-
-	CMP_TOK("store8", T_STORE8);
-	CMP_TOK("store32", T_STORE32);
-	CMP_TOK("store64", T_STORE64);
-
-	CMP_TOK("load8", T_LOAD8);
-	CMP_TOK("load32", T_LOAD32);
-	CMP_TOK("load64", T_LOAD64);
-
-	CMP_TOK("ret8", T_RET8);
-	CMP_TOK("ret32", T_RET32);
-	CMP_TOK("ret64", T_RET64);
-
-	CMP_TOK("ret", T_RET);
-
-	CMP_TOK("jump", T_JUMP);
-	CMP_TOK("jumpcmp", T_JUMPCMP);
-	CMP_TOK("jumpproc", T_JUMPPROC);
-
-	CMP_TOK("iclt", T_ICLT);
-	CMP_TOK("icle", T_ICLE);
-	CMP_TOK("iceq", T_ICEQ);
-	CMP_TOK("icgt", T_ICGT);
-	CMP_TOK("icge", T_ICGE);
-
-	CMP_TOK("ulclt", T_ULCLT);
-	CMP_TOK("ulcle", T_ULCLE);
-	CMP_TOK("ulceq", T_ULCEQ);
-	CMP_TOK("ulcgt", T_ULCGT);
-	CMP_TOK("ulcge", T_ULCGE);
-
-	CMP_TOK("fclt", T_FCLT);
-	CMP_TOK("fcle", T_FCLE);
-	CMP_TOK("fceq", T_FCEQ);
-	CMP_TOK("fcgt", T_FCGT);
-	CMP_TOK("fcge", T_FCGE);
-
-	CMP_TOK("cclt", T_CCLT);
-	CMP_TOK("ccle", T_CCLE);
-	CMP_TOK("cceq", T_CCEQ);
-	CMP_TOK("ccgt", T_CCGT);
-	CMP_TOK("ccge", T_CCGE);
-
-	CMP_TOK("ulpush", T_ULPUSH);
-	CMP_TOK("uladd", T_ULADD);
-	CMP_TOK("ulsub", T_ULSUB);
-	CMP_TOK("ulmult", T_ULMULT);
-	CMP_TOK("uldiv", T_ULDIV);
-	CMP_TOK("ulmod", T_ULMOD);
-	CMP_TOK("ulprint", T_ULPRINT);
-
-	CMP_TOK("ipush", T_IPUSH);
-	CMP_TOK("iadd", T_IADD);
-	CMP_TOK("isub", T_ISUB);
-	CMP_TOK("imult", T_IMULT);
-	CMP_TOK("idiv", T_IDIV);
-	CMP_TOK("imod", T_IMOD);
-	CMP_TOK("iprint", T_IPRINT);
-
-	CMP_TOK("fpush", T_FPUSH);
-	CMP_TOK("fadd", T_FADD);
-	CMP_TOK("fsub", T_FSUB);
-	CMP_TOK("fmult", T_FMULT);
-	CMP_TOK("fdiv", T_FDIV);
-	CMP_TOK("fprint", T_FPRINT);
-
-	CMP_TOK("cpush", T_CPUSH);
-	CMP_TOK("cadd", T_CADD);
-	CMP_TOK("csub", T_CSUB);
-	CMP_TOK("cmult", T_CMULT);
-	CMP_TOK("cdiv", T_CDIV);
-	CMP_TOK("cmod", T_CMOD);
-	CMP_TOK("cprint", T_CPRINT);
-	CMP_TOK("ciprint", T_CIPRINT);
-
-	CMP_TOK("ppush",   T_PPUSH);
-	CMP_TOK("pload",   T_PLOAD);
-	CMP_TOK("pderef8", T_PDEREF8);
-	CMP_TOK("pderef32",T_PDEREF32);
-	CMP_TOK("pderef64",T_PDEREF64);
-	CMP_TOK("pderef",  T_PDEREF);
-	CMP_TOK("pset8",   T_PSET8);
-	CMP_TOK("pset32",  T_PSET32);
-	CMP_TOK("pset64",  T_PSET64);
-	CMP_TOK("pset",    T_PSET);
-
-	CMP_TOK("extern", T_EXTERN);
-
-	CMP_TOK("dd", T_DD);
-	CMP_TOK("dw", T_DW);
-	CMP_TOK("db", T_DB);
+#define TOK_STR(tok, s)                       \
+	if (strncmp(s, buf, BUF_SIZE) == 0) { \
+		token->kind = tok;            \
+		goto exit;                    \
+	}
+#include "tokens.h"
+#undef TOK_STR
 
 	// Label
 	if (lexer_peak(lexer) == ':') {
@@ -317,7 +120,6 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 
 	token->data.s = s;
 exit: ;
-#undef CMP_TOK
 }
 
 bool is_num_lit(char c)
@@ -582,21 +384,13 @@ tailcall: ;
 	switch (c) {
 		case '\t':
 		case ' ': goto tailcall;
-		case '\n': {
-			token->kind = T_EOL;
+		case ',': case '[':
+		case ']': case '\n': {
+			token->kind = c;
 		} break;
 		case ';': {
 			lexer_consume_comment(lexer);
 			goto tailcall;
-		} break;
-		case ',': {
-			token->kind = T_COMMA;
-		} break;
-		case '[': {
-			token->kind = T_OPEN_BRACKET;
-		} break;
-		case ']': {
-			token->kind = T_CLOSE_BRACKET;
 		} break;
 		case '.': {
 			lexer_consume_section(lexer, token);
@@ -613,7 +407,6 @@ tailcall: ;
 			lexer_consume_signed_num_lit(lexer, token, c);
 		} break;
 		default: {
-
 			token->kind = T_ILLEGAL;
 			goto error;
 		} break;
