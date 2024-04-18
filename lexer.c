@@ -67,13 +67,14 @@ void token_name(Token *token, char *buf)
 {
 	enum TokenKind kind = token->kind;
 
-#define TOK(tok) if (kind == tok) sprintf(buf, #tok);
-#include "tokens.h"
-#undef TOK
-
 	if (kind == T_IDENT) {
 		sprintf(buf, "IDENT:%s", token->data.s);
+		return;
 	}
+
+#define TOK(tok) if (kind == tok) { sprintf(buf, #tok); return; }
+#include "tokens.h"
+#undef TOK
 }
 
 void lexer_fill_ident_buf(Lexer *lexer, char **p)
