@@ -69,7 +69,6 @@ void token_name(Token *token, char *buf)
 
 #define TOK(tok) if (kind == tok) sprintf(buf, #tok);
 #include "tokens.h"
-TOK(T_ILLEGAL)
 #undef TOK
 
 	if (kind == T_IDENT) {
