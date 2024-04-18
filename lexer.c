@@ -94,13 +94,13 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 
 	lexer_fill_ident_buf(lexer, &p);
 
-#define TOK_STR(tok, s)                       \
+#define TOK_KW(tok, s)                        \
 	if (strncmp(s, buf, BUF_SIZE) == 0) { \
 		token->kind = tok;            \
 		goto exit;                    \
 	}
 #include "tokens.h"
-#undef TOK_STR
+#undef TOK_KW
 
 	// Label
 	if (lexer_peak(lexer) == ':') {

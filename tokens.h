@@ -37,17 +37,17 @@ TOK(T_ILLEGAL)
 
 #endif
 
-#ifdef TOK_STR
-#define INSTR(x, str) TOK_STR(T_##x, str)
+#ifdef TOK_KW
+#define INSTR(x, str) TOK_KW(T_##x, str)
 #include "instructions.h"
 #undef INSTR
 
-TOK_STR(T_SECTION_DATA, ".data")
-TOK_STR(T_SECTION_TEXT, ".text")
+TOK_KW(T_SECTION_DATA, ".data")
+TOK_KW(T_SECTION_TEXT, ".text")
 
-TOK_STR(T_EXTERN, "extern")
+TOK_KW(T_EXTERN, "extern")
 
-TOK_STR(T_DD, "dd")
-TOK_STR(T_DW, "dw")
-TOK_STR(T_DB, "db")
+TOK_KW(T_DD, "dd")
+TOK_KW(T_DW, "dw")
+TOK_KW(T_DB, "db")
 #endif
