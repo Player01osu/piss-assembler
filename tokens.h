@@ -40,6 +40,8 @@ TOK(T_ILLEGAL)
 #ifdef TOK_STR
 #define INSTR(x, str) TOK_STR(T_##x, str)
 #include "instructions.h"
+#undef INSTR
+
 TOK_STR(T_SECTION_DATA, ".data")
 TOK_STR(T_SECTION_TEXT, ".text")
 
@@ -48,5 +50,4 @@ TOK_STR(T_EXTERN, "extern")
 TOK_STR(T_DD, "dd")
 TOK_STR(T_DW, "dw")
 TOK_STR(T_DB, "db")
-#undef INSTR
 #endif
