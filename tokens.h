@@ -1,16 +1,15 @@
 #ifdef TOK
 
 #ifdef TOK_ENUM
-TOK(T_COMMA         = ',')
-TOK(T_OPEN_BRACKET  = '[')
-TOK(T_CLOSE_BRACKET = ']')
-TOK(T_EOL           = '\n')
+#define X_ENUM(x) x
 #else
-TOK(T_COMMA)
-TOK(T_OPEN_BRACKET)
-TOK(T_CLOSE_BRACKET)
-TOK(T_EOL)
+#define X_ENUM(_)
 #endif
+TOK(T_COMMA         X_ENUM(= ','))
+TOK(T_OPEN_BRACKET  X_ENUM(= '['))
+TOK(T_CLOSE_BRACKET X_ENUM(= ']'))
+TOK(T_EOL           X_ENUM(= '\n'))
+#undef X_ENUM
 
 #define INSTR(x, _) TOK(T_##x)
 #include "instructions.h"
