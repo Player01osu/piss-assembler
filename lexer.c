@@ -339,20 +339,18 @@ void lexer_consume_char_lit(Lexer *lexer, Token *token)
 
 void lexer_consume_section(Lexer *lexer, Token *token)
 {
-#define CMP_TOK(s, tok) do { if (strncmp(s, buf, BUF_SIZE) == 0) { token->kind = tok; goto exit; } } while(0)
 	char buf[BUF_SIZE] = {0};
 	char *p = buf;
 
 	lexer_fill_ident_buf(lexer, &p);
 
+#define CMP_TOK(s, tok) do { if (strncmp(s, buf, BUF_SIZE) == 0) { token->kind = tok; return; } } while(0)
 	CMP_TOK("data", T_SECTION_DATA);
 	CMP_TOK("text", T_SECTION_TEXT);
+#undef CMP_TOK
 
 	// Invalid section name
 	token->kind = T_ILLEGAL;
-exit: ;
-
-#undef CMP_TOK
 }
 
 Token *lexer_next(Lexer *lexer)
