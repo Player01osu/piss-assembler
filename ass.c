@@ -757,6 +757,8 @@ void context_destroy(Ctx *context)
 		context->frame_ptr = context->frame_ptr->prev;
 		free(p);
 	}
+	free(context->label_map.labels);
+	free(context->declaration_map.declarations);
 	free(context->instructions);
 }
 
@@ -888,6 +890,8 @@ int main(int argc, char **argv)
 
 	parse_src(&context, arena, path, s, len);
 	begin_execution(&context);
+	context_destroy(&context);
+	arena_destroy(arena);
 
 	return 0;
 }
