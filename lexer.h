@@ -52,7 +52,7 @@ void token_name(Token *token, char *buf);
 
 void lexer_init(Lexer *lexer, Arena *arena, const char *src, size_t len);
 
-Token *lexer_next(Lexer *lexer);
+Token lexer_next(Lexer *lexer);
 
 Span span_join(Span a, Span b);
 

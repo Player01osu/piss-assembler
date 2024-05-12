@@ -19,17 +19,16 @@ bool is_end_of_statement(enum TokenKind kind)
 	return kind == T_EOL || kind == T_EOF;
 }
 
-
-Token *parser_bump(Parser *parser)
+Token parser_bump(Parser *parser)
 {
 	return lexer_next(&parser->lexer);
 }
 
-Token *parser_expect(Parser *parser, enum TokenKind kind)
+int parser_expect(Parser *parser, enum TokenKind kind, Token *token)
 {
-	Token *token = parser_bump(parser);
-	if (token->kind == kind) return token;
-	else                     return NULL;
+	*token = parser_bump(parser);
+	if (token->kind == kind) return 0;
+	else                     return -1;
 }
 
 #define parser_err(parser, msg)                                      \
