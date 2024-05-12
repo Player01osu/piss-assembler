@@ -156,12 +156,12 @@ void lexer_consume_signed_num_lit(Lexer *lexer, Token *token, char c)
 bool is_valid_digit(char c, int base)
 {
 	switch (base) {
-		case 16: {
-			return (c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102);
-		} break;
-		default: {
-			panic("Unknown base; unreachable");
-		}
+	case 16: {
+		return (c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102);
+	} break;
+	default: {
+		panic("Unknown base; unreachable");
+	}
 	}
 }
 
@@ -183,15 +183,15 @@ void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 		int base = 16;
 		--p;
 		switch (peak) {
-			case 'X':
-			case 'x': {
-				base = 16;
-			} break;
-			default: {
-				// Invalid literal base (0x)
-				token->kind = T_ILLEGAL;
-				return;
-			}
+		case 'X':
+		case 'x': {
+			base = 16;
+		} break;
+		default: {
+			// Invalid literal base (0x)
+			token->kind = T_ILLEGAL;
+			return;
+		}
 		}
 
 		lexer_bump(lexer);
@@ -282,15 +282,15 @@ void lexer_consume_string_lit(Lexer *lexer, Token *token)
 
 #define T(from, to) case from: { c = to; break; }
 			switch (c) {
-				T('0', '\0'); T('a', '\a');
-				T('b', '\b'); T('t', '\t');
-				T('n', '\n'); T('\\', '\\');
-				T('\'', '\'');
-				default: {
-					// ERROR Invalid escape character
-					token->kind = T_ILLEGAL;
-					return;
-				}
+			T('0', '\0'); T('a', '\a');
+			T('b', '\b'); T('t', '\t');
+			T('n', '\n'); T('\\', '\\');
+			T('\'', '\'');
+			default: {
+				// ERROR Invalid escape character
+				token->kind = T_ILLEGAL;
+				return;
+			}
 			}
 #undef T
 		}
@@ -313,15 +313,15 @@ void lexer_consume_char_lit(Lexer *lexer, Token *token)
 
 #define T(from, to) case from: { c = to; break; }
 		switch (c) {
-			T('0', '\0'); T('a', '\a');
-			T('b', '\b'); T('t', '\t');
-			T('n', '\n'); T('\\', '\\');
-			T('\'', '\'');
-			default: {
-				// ERROR Invalid escape character
-				token->kind = T_ILLEGAL;
-				return;
-			}
+		T('0', '\0'); T('a', '\a');
+		T('b', '\b'); T('t', '\t');
+		T('n', '\n'); T('\\', '\\');
+		T('\'', '\'');
+		default: {
+			// ERROR Invalid escape character
+			token->kind = T_ILLEGAL;
+			return;
+		}
 		}
 #undef T
 	}
@@ -353,63 +353,63 @@ void lexer_consume_section(Lexer *lexer, Token *token)
 	token->kind = T_ILLEGAL;
 }
 
-Token *lexer_next(Lexer *lexer)
+Token lexer_next(Lexer *lexer)
 {
-	Token *token = (Token *)arena_alloc(lexer->arena, sizeof(Token));
+	Token token = {0};
 tailcall: ;
 	char c = lexer_bump(lexer);
 	size_t start_row = lexer->row;
 	size_t start_col = lexer->col;
 
 	if (c == '\0') {
-		token->kind = T_EOF;
+		token.kind = T_EOF;
 		goto exit;
 	}
 
 	if (isalpha(c) || c == '_') {
-		lexer_consume_ident(lexer, token, c);
+		lexer_consume_ident(lexer, &token, c);
 		goto exit;
 	}
 
 	if (c >= '0' && c <= '9') {
-		lexer_consume_num_lit(lexer, token, c);
+		lexer_consume_num_lit(lexer, &token, c);
 		goto exit;
 	}
 
 	switch (c) {
-		case '\t':
-		case ' ': goto tailcall;
-		case ',': case '[':
-		case ']': case '\n': {
-			token->kind = c;
-		} break;
-		case ';': {
-			lexer_consume_comment(lexer);
-			goto tailcall;
-		} break;
-		case '.': {
-			lexer_consume_section(lexer, token);
-		} break;
+	case '\t':
+	case ' ': goto tailcall;
+	case ',': case '[':
+	case ']': case '\n': {
+		token.kind = c;
+	} break;
+	case ';': {
+		lexer_consume_comment(lexer);
+		goto tailcall;
+	} break;
+	case '.': {
+		lexer_consume_section(lexer, &token);
+	} break;
 
-		case '"': {
-			lexer_consume_string_lit(lexer, token);
-		} break;
-		case '\'': {
-			lexer_consume_char_lit(lexer, token);
-		} break;
+	case '"': {
+		lexer_consume_string_lit(lexer, &token);
+	} break;
+	case '\'': {
+		lexer_consume_char_lit(lexer, &token);
+	} break;
 
-		case '-': {
-			lexer_consume_signed_num_lit(lexer, token, c);
-		} break;
-		default: {
-			token->kind = T_ILLEGAL;
-			goto error;
-		} break;
+	case '-': {
+		lexer_consume_signed_num_lit(lexer, &token, c);
+	} break;
+	default: {
+		token.kind = T_ILLEGAL;
+		goto error;
+	} break;
 	}
 
 error:
 exit:
-	token->span = (Span) {
+	token.span = (Span) {
 		.start_row = start_row + 1,
 		.start_col = start_col + 1,
 		.end_row = lexer->prev_row + 1,
