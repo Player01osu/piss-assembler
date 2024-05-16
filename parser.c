@@ -39,27 +39,29 @@ int parser_expect(Parser *parser, enum TokenKind kind, Token *token)
 		parser->error = _s;                                  \
 	} while (0)
 
-#define single_stmt_expect(parser, node_kind)                        \
+#define single_stmt_expect(parser, instruction_kind)                 \
 	do {                                                         \
-		Token next = parser_bump(parser);                   \
-		if (next.kind != T_EOL && next.kind != T_EOF) {    \
+		Token next = parser_bump(parser);                    \
+		if (next.kind != T_EOL && next.kind != T_EOF) {      \
 			node->kind = N_ILLEGAL;                      \
 			char __s[128];                               \
 			sprintf(__s, "%s:Expected eol\n", __func__); \
 			parser_err(parser, __s);                     \
 			return -1;                                   \
 		}                                                    \
-		node->kind = node_kind;                              \
-		node->span = span_join(node->span, next.span);      \
+		node->data.instruction.kind = instruction_kind;      \
+		node->kind = N_INSTRUCTION;                          \
+		node->span = span_join(node->span, next.span);       \
 		return 0;                                            \
 	} while (0)
 
-int parse_push(Parser *parser, Node *node, enum NodeKind kind)
+int parse_push(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	Token next = parser_bump(parser);
-	Lit *lit = &node->data.lit;
+	Lit *lit = &node->data.instruction.data.lit;
 	node->span = span_join(node->span, next.span);
-	node->kind = kind;
+	node->kind = N_INSTRUCTION;
+	node->data.instruction.kind = kind;
 
 	if (next.kind == T_INUMLIT) {
 		lit->kind = L_INT;
@@ -89,15 +91,16 @@ int parse_push(Parser *parser, Node *node, enum NodeKind kind)
 	return 0;
 }
 
-int parse_idx(Parser *parser, Node *node, enum NodeKind kind)
+int parse_idx(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
-	node->kind = kind;
+	node->data.instruction.kind = kind;
+	node->kind = N_INSTRUCTION;
 	node->span = next.span;
 
 	if (next.kind == T_UINUMLIT) {
-		node->data.n = next.data.ui;
+		node->data.instruction.data.n = next.data.ui;
 	} else {
 		node->kind = N_ILLEGAL;
 		parser_err(parser, "Expected index");
@@ -114,7 +117,7 @@ int parse_idx(Parser *parser, Node *node, enum NodeKind kind)
 	return 0;
 }
 
-int parse_single_stmt(Parser *parser, Node *node, enum NodeKind kind)
+int parse_single_stmt(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	single_stmt_expect(parser, kind);
 }
@@ -129,9 +132,11 @@ int parse_jump(Parser *parser, Node *node)
 		return -1;
 	}
 
-	node->kind = N_JUMP;
+	node->data.instruction.kind = I_JUMP;
+	node->kind = N_INSTRUCTION;
+
 	if (next.kind == T_IDENT) {
-		node->data.s = next.data.s;
+		node->data.instruction.data.s = next.data.s;
 	}
 
 	next = parser_bump(parser);
@@ -144,7 +149,7 @@ int parse_jump(Parser *parser, Node *node)
 	return 0;
 }
 
-int parse_jumpcmp(Parser *parser, Node *node, enum NodeKind kind)
+int parse_jumpcmp(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
@@ -154,9 +159,11 @@ int parse_jumpcmp(Parser *parser, Node *node, enum NodeKind kind)
 		return -1;
 	}
 
-	node->kind = kind;
+	node->data.instruction.kind = kind;
+	node->kind = N_INSTRUCTION;
+
 	if (next.kind == T_IDENT) {
-		node->data.s = next.data.s;
+		node->data.instruction.data.s = next.data.s;
 	}
 
 	next = parser_bump(parser);
@@ -172,11 +179,12 @@ int parse_jumpcmp(Parser *parser, Node *node, enum NodeKind kind)
 int parse_jumpproc(Parser *parser, Node *node)
 {
 	Token next = parser_bump(parser);
-	node->kind = N_JUMPPROC;
+	node->data.instruction.kind = I_JUMPPROC;
+	node->kind = N_INSTRUCTION;
 	node->span = span_join(node->span, next.span);
 
 	if (next.kind == T_IDENT) {
-		node->data.proc.location.s = next.data.s;
+		node->data.instruction.data.proc.location.s = next.data.s;
 	} else {
 		node->kind = N_ILLEGAL;
 		parser_err(parser, "Expected label");
@@ -186,7 +194,7 @@ int parse_jumpproc(Parser *parser, Node *node)
 	next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
 	if (next.kind == T_UINUMLIT) {
-		node->data.proc.argc = next.data.ui;
+		node->data.instruction.data.proc.argc = next.data.ui;
 	} else {
 		node->kind = N_ILLEGAL;
 		parser_err(parser, "Expected number of bytes");
@@ -334,206 +342,206 @@ tailcall: ;
 	case PARSE_TEXT: {
 		switch (token.kind) {
 		case T_ULPUSH: {
-			parse_push(parser, node, N_ULPUSH);
+			parse_push(parser, node, I_ULPUSH);
 		} break;
 		case T_ULADD: {
-			parse_single_stmt(parser, node, N_ULADD);
+			parse_single_stmt(parser, node, I_ULADD);
 		} break;
 		case T_ULSUB: {
-			parse_single_stmt(parser, node, N_ULSUB);
+			parse_single_stmt(parser, node, I_ULSUB);
 		} break;
 		case T_ULMULT: {
-			parse_single_stmt(parser, node, N_ULMULT);
+			parse_single_stmt(parser, node, I_ULMULT);
 		} break;
 		case T_ULDIV: {
-			parse_single_stmt(parser, node, N_ULDIV);
+			parse_single_stmt(parser, node, I_ULDIV);
 		} break;
 		case T_ULMOD: {
-			parse_single_stmt(parser, node, N_ULMOD);
+			parse_single_stmt(parser, node, I_ULMOD);
 		} break;
 		case T_ULPRINT: {
-			parse_single_stmt(parser, node, N_ULPRINT);
+			parse_single_stmt(parser, node, I_ULPRINT);
 		} break;
 
 		case T_IPUSH: {
-			parse_push(parser, node, N_IPUSH);
+			parse_push(parser, node, I_IPUSH);
 		} break;
 		case T_IADD: {
-			parse_single_stmt(parser, node, N_IADD);
+			parse_single_stmt(parser, node, I_IADD);
 		} break;
 		case T_ISUB: {
-			parse_single_stmt(parser, node, N_ISUB);
+			parse_single_stmt(parser, node, I_ISUB);
 		} break;
 		case T_IMULT: {
-			parse_single_stmt(parser, node, N_IMULT);
+			parse_single_stmt(parser, node, I_IMULT);
 		} break;
 		case T_IDIV: {
-			parse_single_stmt(parser, node, N_IDIV);
+			parse_single_stmt(parser, node, I_IDIV);
 		} break;
 		case T_IMOD: {
-			parse_single_stmt(parser, node, N_IMOD);
+			parse_single_stmt(parser, node, I_IMOD);
 		} break;
 		case T_IPRINT: {
-			parse_single_stmt(parser, node, N_IPRINT);
+			parse_single_stmt(parser, node, I_IPRINT);
 		} break;
 
 		case T_FPUSH: {
-			parse_push(parser, node, N_FPUSH);
+			parse_push(parser, node, I_FPUSH);
 		} break;
 		case T_FADD: {
-			parse_single_stmt(parser, node, N_FADD);
+			parse_single_stmt(parser, node, I_FADD);
 		} break;
 		case T_FSUB: {
-			parse_single_stmt(parser, node, N_FSUB);
+			parse_single_stmt(parser, node, I_FSUB);
 		} break;
 		case T_FMULT: {
-			parse_single_stmt(parser, node, N_FMULT);
+			parse_single_stmt(parser, node, I_FMULT);
 		} break;
 		case T_FDIV: {
-			parse_single_stmt(parser, node, N_FDIV);
+			parse_single_stmt(parser, node, I_FDIV);
 		} break;
 		case T_FPRINT: {
-			parse_single_stmt(parser, node, N_FPRINT);
+			parse_single_stmt(parser, node, I_FPRINT);
 		} break;
 
 		case T_CPUSH: {
-			parse_push(parser, node, N_CPUSH);
+			parse_push(parser, node, I_CPUSH);
 		} break;
 		case T_CADD: {
-			parse_single_stmt(parser, node, N_CADD);
+			parse_single_stmt(parser, node, I_CADD);
 		} break;
 		case T_CSUB: {
-			parse_single_stmt(parser, node, N_CSUB);
+			parse_single_stmt(parser, node, I_CSUB);
 		} break;
 		case T_CMULT: {
-			parse_single_stmt(parser, node, N_CMULT);
+			parse_single_stmt(parser, node, I_CMULT);
 		} break;
 		case T_CDIV: {
-			parse_single_stmt(parser, node, N_CDIV);
+			parse_single_stmt(parser, node, I_CDIV);
 		} break;
 		case T_CMOD: {
-			parse_single_stmt(parser, node, N_CMOD);
+			parse_single_stmt(parser, node, I_CMOD);
 		} break;
 		case T_CPRINT: {
-			parse_single_stmt(parser, node, N_CPRINT);
+			parse_single_stmt(parser, node, I_CPRINT);
 		} break;
 		case T_CIPRINT: {
-			parse_single_stmt(parser, node, N_CIPRINT);
+			parse_single_stmt(parser, node, I_CIPRINT);
 		} break;
 
 		case T_PPUSH: {
-			parse_push(parser, node, N_PPUSH);
+			parse_push(parser, node, I_PPUSH);
 		} break;
 		case T_PLOAD: {
-			parse_idx(parser, node, N_PLOAD);
+			parse_idx(parser, node, I_PLOAD);
 		} break;
 		case T_PDEREF8: {
-			parse_single_stmt(parser, node, N_PDEREF8);
+			parse_single_stmt(parser, node, I_PDEREF8);
 		} break;
 		case T_PDEREF32: {
-			parse_single_stmt(parser, node, N_PDEREF32);
+			parse_single_stmt(parser, node, I_PDEREF32);
 		} break;
 		case T_PDEREF64: {
-			parse_single_stmt(parser, node, N_PDEREF64);
+			parse_single_stmt(parser, node, I_PDEREF64);
 		} break;
 		case T_PDEREF: {
-			parse_idx(parser, node, N_PDEREF);
+			parse_idx(parser, node, I_PDEREF);
 		} break;
 		case T_PSET8: {
-			parse_single_stmt(parser, node, N_PSET8);
+			parse_single_stmt(parser, node, I_PSET8);
 		} break;
 		case T_PSET32: {
-			parse_single_stmt(parser, node, N_PSET32);
+			parse_single_stmt(parser, node, I_PSET32);
 		} break;
 		case T_PSET64: {
-			parse_single_stmt(parser, node, N_PSET64);
+			parse_single_stmt(parser, node, I_PSET64);
 		} break;
 		case T_PSET: {
-			parse_idx(parser, node, N_PSET);
+			parse_idx(parser, node, I_PSET);
 		} break;
 
 		case T_POP8: {
-			parse_single_stmt(parser, node, N_POP8);
+			parse_single_stmt(parser, node, I_POP8);
 		} break;
 		case T_POP32: {
-			parse_single_stmt(parser, node, N_POP32);
+			parse_single_stmt(parser, node, I_POP32);
 		} break;
 		case T_POP64: {
-			parse_single_stmt(parser, node, N_POP64);
+			parse_single_stmt(parser, node, I_POP64);
 		} break;
 
 		case T_JUMP: {
 			parse_jump(parser, node);
 		} break;
 		case T_JUMPCMP: {
-			parse_jumpcmp(parser, node, N_JUMPCMP);
+			parse_jumpcmp(parser, node, I_JUMPCMP);
 		} break;
 		case T_JUMPPROC: {
 			parse_jumpproc(parser, node);
 		} break;
 
 		case T_ICLT: {
-			parse_single_stmt(parser, node, N_ICLT);
+			parse_single_stmt(parser, node, I_ICLT);
 		} break;
 		case T_ICLE: {
-			parse_single_stmt(parser, node, N_ICLE);
+			parse_single_stmt(parser, node, I_ICLE);
 		} break;
 		case T_ICEQ: {
-			parse_single_stmt(parser, node, N_ICEQ);
+			parse_single_stmt(parser, node, I_ICEQ);
 		} break;
 		case T_ICGT: {
-			parse_single_stmt(parser, node, N_ICGT);
+			parse_single_stmt(parser, node, I_ICGT);
 		} break;
 		case T_ICGE: {
-			parse_single_stmt(parser, node, N_ICGE);
+			parse_single_stmt(parser, node, I_ICGE);
 		} break;
 
 		case T_ULCLT: {
-			parse_single_stmt(parser, node, N_ULCLT);
+			parse_single_stmt(parser, node, I_ULCLT);
 		} break;
 		case T_ULCLE: {
-			parse_single_stmt(parser, node, N_ULCLE);
+			parse_single_stmt(parser, node, I_ULCLE);
 		} break;
 		case T_ULCEQ: {
-			parse_single_stmt(parser, node, N_ULCEQ);
+			parse_single_stmt(parser, node, I_ULCEQ);
 		} break;
 		case T_ULCGT: {
-			parse_single_stmt(parser, node, N_ULCGT);
+			parse_single_stmt(parser, node, I_ULCGT);
 		} break;
 		case T_ULCGE: {
-			parse_single_stmt(parser, node, N_ULCGE);
+			parse_single_stmt(parser, node, I_ULCGE);
 		} break;
 
 		case T_FCLT: {
-			parse_single_stmt(parser, node, N_FCLT);
+			parse_single_stmt(parser, node, I_FCLT);
 		} break;
 		case T_FCLE: {
-			parse_single_stmt(parser, node, N_FCLE);
+			parse_single_stmt(parser, node, I_FCLE);
 		} break;
 		case T_FCEQ: {
-			parse_single_stmt(parser, node, N_FCEQ);
+			parse_single_stmt(parser, node, I_FCEQ);
 		} break;
 		case T_FCGT: {
-			parse_single_stmt(parser, node, N_FCGT);
+			parse_single_stmt(parser, node, I_FCGT);
 		} break;
 		case T_FCGE: {
-			parse_single_stmt(parser, node, N_FCGE);
+			parse_single_stmt(parser, node, I_FCGE);
 		} break;
 
 		case T_CCLT: {
-			parse_single_stmt(parser, node, N_CCLT);
+			parse_single_stmt(parser, node, I_CCLT);
 		} break;
 		case T_CCLE: {
-			parse_single_stmt(parser, node, N_CCLE);
+			parse_single_stmt(parser, node, I_CCLE);
 		} break;
 		case T_CCEQ: {
-			parse_single_stmt(parser, node, N_CCEQ);
+			parse_single_stmt(parser, node, I_CCEQ);
 		} break;
 		case T_CCGT: {
-			parse_single_stmt(parser, node, N_CCGT);
+			parse_single_stmt(parser, node, I_CCGT);
 		} break;
 		case T_CCGE: {
-			parse_single_stmt(parser, node, N_CCGE);
+			parse_single_stmt(parser, node, I_CCGE);
 		} break;
 
 		case T_LABEL: {
@@ -541,67 +549,67 @@ tailcall: ;
 		} break;
 
 		case T_DUPE8: {
-			parse_single_stmt(parser, node, N_DUPE8);
+			parse_single_stmt(parser, node, I_DUPE8);
 		} break;
 		case T_DUPE32: {
-			parse_single_stmt(parser, node, N_DUPE32);
+			parse_single_stmt(parser, node, I_DUPE32);
 		} break;
 		case T_DUPE64: {
-			parse_single_stmt(parser, node, N_DUPE64);
+			parse_single_stmt(parser, node, I_DUPE64);
 		} break;
 
 		case T_SWAP8: {
-			parse_single_stmt(parser, node, N_SWAP8);
+			parse_single_stmt(parser, node, I_SWAP8);
 		} break;
 		case T_SWAP32: {
-			parse_single_stmt(parser, node, N_SWAP32);
+			parse_single_stmt(parser, node, I_SWAP32);
 		} break;
 		case T_SWAP64: {
-			parse_single_stmt(parser, node, N_SWAP64);
+			parse_single_stmt(parser, node, I_SWAP64);
 		} break;
 
 		case T_COPY8: {
-			parse_idx(parser, node, N_COPY8);
+			parse_idx(parser, node, I_COPY8);
 		} break;
 		case T_COPY32: {
-			parse_idx(parser, node, N_COPY32);
+			parse_idx(parser, node, I_COPY32);
 		} break;
 		case T_COPY64: {
-			parse_idx(parser, node, N_COPY64);
+			parse_idx(parser, node, I_COPY64);
 		} break;
 
 		case T_STORE8: {
-			parse_idx(parser, node, N_STORE8);
+			parse_idx(parser, node, I_STORE8);
 		} break;
 		case T_STORE32: {
-			parse_idx(parser, node, N_STORE32);
+			parse_idx(parser, node, I_STORE32);
 		} break;
 		case T_STORE64: {
-			parse_idx(parser, node, N_STORE64);
+			parse_idx(parser, node, I_STORE64);
 		} break;
 
 		case T_LOAD8: {
-			parse_idx(parser, node, N_LOAD8);
+			parse_idx(parser, node, I_LOAD8);
 		} break;
 		case T_LOAD32: {
-			parse_idx(parser, node, N_LOAD32);
+			parse_idx(parser, node, I_LOAD32);
 		} break;
 		case T_LOAD64: {
-			parse_idx(parser, node, N_LOAD64);
+			parse_idx(parser, node, I_LOAD64);
 		} break;
 
 		case T_RET8: {
-			parse_single_stmt(parser, node, N_RET8);
+			parse_single_stmt(parser, node, I_RET8);
 		} break;
 		case T_RET32: {
-			parse_single_stmt(parser, node, N_RET32);
+			parse_single_stmt(parser, node, I_RET32);
 		} break;
 		case T_RET64: {
-			parse_single_stmt(parser, node, N_RET64);
+			parse_single_stmt(parser, node, I_RET64);
 		} break;
 
 		case T_RET: {
-			parse_idx(parser, node, N_RET);
+			parse_idx(parser, node, I_RET);
 		} break;
 
 		case T_EOF: {
@@ -617,9 +625,20 @@ tailcall: ;
 			goto error;
 		}
 		}
-
 	} break;
 	}
+
 error:
+
+#if DEBUG
+	if (parser->state == PARSE_DATA) {
+		assert(node->kind != N_INSTRUCTION);
+	} else if (parser->state == PARSE_TEXT) {
+		assert(node->kind != N_DECLARATION);
+	} else {
+		panic("parser in illegal state:%d\n", parser->state);
+	}
+#endif
+
 	return node;
 }

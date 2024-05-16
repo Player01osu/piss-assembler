@@ -7,15 +7,18 @@
 #include "lexer.h"
 
 enum NodeKind {
-#define INSTR(x, _) N_##x,
-#include "instructions.h"
-#undef INSTR
-	/***/
+	N_INSTRUCTION,
 	N_LABEL,
 	N_DECLARATION,
 
 	N_EOF,
 	N_ILLEGAL,
+};
+
+enum InstructionKind {
+#define INSTR(x, _) I_##x,
+#include "instructions.h"
+#undef INSTR
 };
 
 enum DeclarationKind {
@@ -67,8 +70,23 @@ typedef struct DeclarationMap {
 	size_t len;
 } DeclarationMap;
 
+union InstructionData {
+	const char *s;
+	void *ptr;
+	size_t n;
+	ssize_t offset;
+	Lit lit;
+	Proc proc;
+};
+
+typedef struct Instruction {
+	enum InstructionKind kind;
+	union InstructionData data;
+} Instruction;
+
 union NodeData {
 	const char *s;
+	Instruction instruction;
 	void *ptr;
 	size_t n;
 	ssize_t offset;

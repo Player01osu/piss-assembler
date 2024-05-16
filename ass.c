@@ -22,11 +22,6 @@
 
 const char *HELP = "Usage: ass [options] file ...\n";
 
-typedef struct Instruction {
-	enum InstructionKind kind;
-	union NodeData data;
-} Instruction;
-
 typedef struct FramePointer {
 	byte *ptr;
 	byte *return_stack_ptr;
@@ -103,14 +98,16 @@ FramePointer *context_pop_frame(Ctx *context)
 
 bool process_node(Ctx *context, Node *node, Instruction *instruction)
 {
-	instruction->data = node->data;
-
 	switch (node->kind) {
 
+#if 0
 #define INSTR(x, _) case N_##x: instruction->kind = I_##x; break;
 #include "instructions.h"
 #undef INSTR
-
+#endif
+	case N_INSTRUCTION: {
+		*instruction = node->data.instruction;
+	} break;
 	case N_LABEL: {
 		if (!insert_label(&context->label_map, node->data.s, context->pc)) {
 			panic("Failed to create label");

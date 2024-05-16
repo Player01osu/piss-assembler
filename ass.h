@@ -29,12 +29,6 @@
 #define STACK_SIZE 1024 * 16
 #define LOCAL_SIZE 256
 
-enum InstructionKind {
-#define INSTR(x, _) I_##x,
-#include "instructions.h"
-#undef INSTR
-};
-
 enum DataSize {
 	SIZE_DD,
 	SIZE_DW,
