@@ -35,23 +35,31 @@ enum LitKind {
 	L_PTR,
 };
 
+enum ParserState {
+	PARSE_DATA,
+	PARSE_TEXT,
+};
+
+union LitData {
+	const char *s;
+	uint64_t ui;
+	int64_t i;
+	double f;
+};
+
 typedef struct Lit {
 	enum LitKind kind;
-	union {
-		const char *s;
-		uint64_t ui;
-		int64_t i;
-		double f;
-	} data;
+	union LitData data;
 	Span span;
 } Lit;
 
-typedef struct Proc {
-	union {
-		const char *s;
-		ssize_t offset;
-	} location;
+union ProcLocation {
+	const char *s;
+	ssize_t offset;
+};
 
+typedef struct Proc {
+	union ProcLocation location;
 	size_t argc;
 	Span span;
 } Proc;
@@ -87,11 +95,6 @@ typedef struct Instruction {
 union NodeData {
 	const char *s;
 	Instruction instruction;
-	void *ptr;
-	size_t n;
-	ssize_t offset;
-	Lit lit;
-	Proc proc;
 	Declaration declaration;
 };
 
@@ -105,11 +108,7 @@ typedef struct Parser {
 	Lexer lexer;
 	Arena *arena;
 	char *error;
-
-	enum {
-		PARSE_DATA,
-		PARSE_TEXT,
-	} state;
+	enum ParserState state;
 } Parser;
 
 void parser_init(Parser *parser, Arena *arena, const char *src, size_t len);
