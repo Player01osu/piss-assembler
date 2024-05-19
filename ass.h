@@ -48,7 +48,13 @@ typedef struct LabelMap {
 } LabelMap;
 
 #define arena_xalloc(arena, size) _arena_xalloc(__FILE__, __LINE__, arena, size)
+#define xmalloc(size) _xmalloc(__FILE__, __LINE__, size)
+#define xrealloc(ptr, size) _xrealloc(__FILE__, __LINE__, ptr, size)
 
 void *_arena_xalloc(char *filename, int row, Arena *arena, size_t size);
+
+void *_xmalloc(char *filename, int row, size_t size);
+
+void *_xrealloc(char *filename, int row, void *ptr, size_t size);
 
 #endif

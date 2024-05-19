@@ -56,11 +56,32 @@ void *_arena_xalloc(char *filename, int row, Arena *arena, size_t size)
 #endif
 		if (!arena_expand(arena, new_size)) {
 			fprintf(stderr, "%s:%d:ERROR:failed to expand arena... %lu => %lu\n", filename, row, old_size, new_size);
+			exit(1);
 		}
 	}
 
 	void *block = arena_alloc(arena, size);
 	assert(block);
+	return block;
+}
+
+void *_xmalloc(char *filename, int row, size_t size)
+{
+	void *block = malloc(size);
+	if (!block) {
+		fprintf(stderr, "%s:%d:ERROR:failed to allocate block... %lu\n", filename, row, size);
+		exit(1);
+	}
+	return block;
+}
+
+void *_xrealloc(char *filename, int row, void *ptr, size_t size)
+{
+	void *block = realloc(ptr, size);
+	if (!block) {
+		fprintf(stderr, "%s:%d:ERROR:failed to allocate block... %lu\n", filename, row, size);
+		exit(1);
+	}
 	return block;
 }
 
@@ -74,7 +95,7 @@ bool insert_label(LabelMap *label_map, const char *name, size_t location)
 	if (label_map->len >= label_map->cap) {
 		label_map->cap *= 2;
 		label_map->labels =
-			realloc(label_map->labels, sizeof(Label) * label_map->cap);
+			xrealloc(label_map->labels, sizeof(Label) * label_map->cap);
 	}
 	label_map->labels[label_map->len++] = (Label){
 		.name = name,
@@ -88,7 +109,7 @@ bool insert_declaration(DeclarationMap *declaration_map, Declaration declaration
 	if (declaration_map->len >= declaration_map->cap) {
 		declaration_map->cap *= 2;
 		declaration_map->declarations =
-			realloc(declaration_map->declarations, sizeof(*declaration_map->declarations) * declaration_map->cap);
+			xrealloc(declaration_map->declarations, sizeof(*declaration_map->declarations) * declaration_map->cap);
 	}
 	declaration_map->declarations[declaration_map->len++] = declaration;
 	return true;
@@ -96,7 +117,7 @@ bool insert_declaration(DeclarationMap *declaration_map, Declaration declaration
 
 FramePointer *context_push_frame(Ctx *context)
 {
-	FramePointer *p = malloc(sizeof(FramePointer));
+	FramePointer *p = xmalloc(sizeof(FramePointer));
 	if (context->frame_ptr) {
 		p->prev = context->frame_ptr;
 		p->start = context->frame_ptr->ptr;
@@ -559,7 +580,7 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 	case I_JUMPPROC: {
 		size_t argc = instruction->data.proc.argc;
 		FramePointer *stack_ptr = context->frame_ptr;
-		FramePointer *stack_ptr_new = malloc(sizeof(FramePointer));
+		FramePointer *stack_ptr_new = xmalloc(sizeof(FramePointer));
 		// Move previous stack frame
 		stack_ptr->ptr -= argc;
 		stack_ptr_new->ptr = stack_ptr->ptr;
@@ -609,18 +630,18 @@ void context_init(Ctx *context)
 	context->frame_ptr->return_stack_ptr = context->return_stack;
 	context->frame_ptr->prev = NULL;
 
-	context->instructions = malloc(sizeof(*context->instructions) * 16);
+	context->instructions = xmalloc(sizeof(*context->instructions) * 16);
 	context->instruction_cap = 16;
 	context->instruction_len = 0;
 
 	context->label_map = (LabelMap){
-		.labels = malloc(sizeof(*context->label_map.labels) * 16),
+		.labels = xmalloc(sizeof(*context->label_map.labels) * 16),
 		.cap = 16,
 		.len = 0,
 	};
 
 	context->declaration_map = (DeclarationMap){
-		.declarations = malloc(sizeof(*context->declaration_map.declarations) * 16),
+		.declarations = xmalloc(sizeof(*context->declaration_map.declarations) * 16),
 		.cap = 16,
 		.len = 0,
 	};
@@ -645,7 +666,7 @@ void context_push_instruction(Ctx *context, Instruction instruction)
 	if (context->instruction_len >= context->instruction_cap) {
 		context->instruction_cap *= 2;
 		context->instructions =
-			realloc(context->instructions, sizeof(*context->instructions) * context->instruction_cap);
+			xrealloc(context->instructions, sizeof(*context->instructions) * context->instruction_cap);
 	}
 	context->instructions[context->instruction_len++] = instruction;
 }

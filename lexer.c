@@ -261,14 +261,14 @@ void string_builder_init(StringBuilder *string_builder, size_t cap)
 {
 	string_builder->len = 0;
 	string_builder->cap = cap;
-	string_builder->items = malloc(sizeof(*string_builder->items) * cap);
+	string_builder->items = xmalloc(sizeof(*string_builder->items) * cap);
 }
 
 void string_builder_push(StringBuilder *string_builder, char c)
 {
 	if (string_builder->len >= string_builder->cap) {
 		string_builder->cap *= 2;
-		string_builder->items = realloc(string_builder->items, string_builder->cap);
+		string_builder->items = xrealloc(string_builder->items, string_builder->cap);
 	}
 
 	string_builder->items[string_builder->len++] = c;
