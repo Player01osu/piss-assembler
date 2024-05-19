@@ -196,7 +196,6 @@ void *pop_stack(Ctx *context, size_t n)
 		ty *b = pop_stack(context, sizeof(*b));       \
 		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
-                                                              \
 		ty item = *a + *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
@@ -206,7 +205,6 @@ void *pop_stack(Ctx *context, size_t n)
 		ty *b = pop_stack(context, sizeof(*b));       \
 		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
-                                                              \
 		ty item = *a - *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
@@ -216,7 +214,6 @@ void *pop_stack(Ctx *context, size_t n)
 		ty *b = pop_stack(context, sizeof(*b));       \
 		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
-                                                              \
 		ty item = *a * *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
@@ -226,7 +223,6 @@ void *pop_stack(Ctx *context, size_t n)
 		ty *b = pop_stack(context, sizeof(*b));       \
 		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
-                                                              \
 		ty item = *a / *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
@@ -292,7 +288,6 @@ void *pop_stack(Ctx *context, size_t n)
 		ty *b = pop_stack(context, sizeof(*b));   \
 		STACK_CHECK;                              \
 		ty *a = pop_stack(context, sizeof(*a));   \
-                                                          \
 		ty item = *a % *b;                        \
 		push_stack(context, &item, sizeof(item)); \
 		break;                                    \
