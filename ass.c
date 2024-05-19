@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 
 #define ARENA_IMPLEMENTATION
+#define ARENA_DEFAULT_ALIGNMENT sizeof(size_t)
 #include "arena.h"
 #undef ARENA_IMPLEMENTATION
 
