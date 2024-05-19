@@ -31,42 +31,58 @@ bool is_ident(char c)
 	return isalnum(c) || c == '_';
 }
 
-void lexer_init(Lexer *lexer, Arena *arena, const char *src, size_t len)
+void lexer_init(Lexer *lexer, Arena *arena, FILE *file, size_t len)
 {
 	lexer->len = len;
-	lexer->src = src;
-	lexer->cursor = src;
 	lexer->remaining = len;
+	lexer->file = file;
 	lexer->col = 0;
 	lexer->row = 0;
 	lexer->arena = arena;
+
+	size_t n = fread(lexer->buf, 1, LEXER_BUF_SIZE, lexer->file);
+
+#ifdef DEBUG_TRACE
+	/* TODO: Factor debug trace printf into macro */
+	fprintf(stderr, "%s:%d:DEBUG:filled buffer with %lu bytes\n", __FILE__, __LINE__, n);
+#endif
 }
 
-char lexer_bump(Lexer *lexer)
+int lexer_bump(Lexer *lexer)
 {
-	if (lexer->remaining <= 0) return '\0';
+	if (lexer->remaining <= 0) return EOF;
+	size_t idx = (lexer->len - lexer->remaining--) % (LEXER_BUF_SIZE);
+	int c = lexer->buf[idx];
+	if (idx + 1 == (LEXER_BUF_SIZE)) {
+		size_t n = fread(lexer->buf, 1, LEXER_BUF_SIZE, lexer->file);
+
+#ifdef DEBUG_TRACE
+		/* TODO: Factor debug trace printf into macro */
+		fprintf(stderr, "%s:%d:DEBUG:filled buffer with %lu bytes\n", __FILE__, __LINE__, n);
+#endif
+	}
 
 	lexer->prev_row = lexer->row;
 	lexer->prev_col = lexer->col;
 
-	if (*lexer->cursor == '\n') {
+	if (c == '\n') {
 		++lexer->row;
 		lexer->col = 0;
 	} else {
 		++lexer->col;
 	}
 
-	--lexer->remaining;
-	return *lexer->cursor++;
+	return c;
 }
 
-char lexer_peak(Lexer *lexer)
+int lexer_peak(Lexer *lexer)
 {
-	if (lexer->remaining <= 0) return '\0';
-	return *lexer->cursor;
+	if (lexer->remaining <= 0) return EOF;
+	size_t idx = (lexer->len - lexer->remaining) % (LEXER_BUF_SIZE);
+	return lexer->buf[idx];
 }
 
-#define BUF_SIZE 16 * 16
+#define SBUF_SIZE 16 * 16
 
 void token_name(Token *token, char *buf)
 {
@@ -93,7 +109,7 @@ void lexer_fill_ident_buf(Lexer *lexer, char **p)
 
 void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 {
-	char buf[BUF_SIZE] = {0};
+	char buf[SBUF_SIZE] = {0};
 	char *p = buf;
 	*p++ = c;
 
@@ -268,13 +284,13 @@ void string_builder_build(StringBuilder *string_builder, char *buf)
 void lexer_consume_string_lit(Lexer *lexer, Token *token)
 {
 	StringBuilder string_builder = {0};
-	char c = lexer_bump(lexer);
+	int c = lexer_bump(lexer);
 	string_builder_init(&string_builder, 16);
 	string_builder_push(&string_builder, c);
 	token->kind = T_SLIT;
 
 	while (c != '"') {
-		if (c == '\0') {
+		if (c == EOF) {
 			// ERROR Unterminated string
 			token->kind = T_ILLEGAL;
 			return;
@@ -365,7 +381,7 @@ tailcall:
 	start_col = lexer->col;
 	c = lexer_bump(lexer);
 
-	if (c == '\0') {
+	if (c == EOF) {
 		token.kind = T_EOF;
 		goto exit;
 	}

@@ -686,10 +686,10 @@ void begin_execution(Ctx *context)
 	}
 }
 
-void parse_src(Ctx *context, Arena *arena, const char *filename, const char *src, const size_t len)
+void parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, const size_t len)
 {
 	Parser parser = {0};
-	parser_init(&parser, arena, src, len);
+	parser_init(&parser, arena, file, len);
 
 	for (Node *node = parser_next(&parser);; node = parser_next(&parser)) {
 		if (!node) {
@@ -748,31 +748,34 @@ int main(int argc, char **argv)
 	struct stat sb = {0};
 	if (argc < 2) {
 		print_help();
-		return 1;
+		goto error_1;
 	}
 
 	FILE *f = fopen(path, "rb");
 	if (!f) {
 		fprintf(stderr, "%s: cannot find %s: No such file or directory\n", program_name, path);
-		return 1;
+		goto error_1;
 	}
 	if (lstat(path, &sb) < 0) {
 		fprintf(stderr, "%s: failed to stat %s\n", program_name, path);
-		return 1;
+		goto error_2;
 	}
-	char s[sb.st_size]; // This is NOT null terminated
-	size_t len = fread(s, sizeof(char), sb.st_size, f);
-	if (fclose(f)) panic("Failed to close file\n");
-	assert(len == (size_t)sb.st_size);
 
 	Ctx context = {0};
 	Arena *arena = arena_create(1024 * 32);
 	context_init(&context);
 
-	parse_src(&context, arena, path, s, len);
+	size_t len = sb.st_size;
+	parse_src(&context, arena, path, f, len);
+	if (fclose(f)) panic("Failed to close file\n");
 	begin_execution(&context);
 	context_destroy(&context);
 	arena_destroy(arena);
 
 	return 0;
+
+error_2:
+	free(f);
+error_1:
+	return 1;
 }

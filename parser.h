@@ -111,7 +111,7 @@ typedef struct Parser {
 	enum ParserState state;
 } Parser;
 
-void parser_init(Parser *parser, Arena *arena, const char *src, size_t len);
+void parser_init(Parser *parser, Arena *arena, FILE *file, size_t len);
 
 Node *parser_next(Parser *parser);
 

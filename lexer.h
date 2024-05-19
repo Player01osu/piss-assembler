@@ -35,10 +35,10 @@ typedef struct Token {
 	Span span;
 } Token;
 
+#define LEXER_BUF_SIZE (1024 * 64)
 typedef struct Lexer {
-	const char *src;
-	const char *cursor;
-
+	char buf[LEXER_BUF_SIZE];
+	FILE *file;
 	size_t len;
 	size_t remaining;
 
@@ -52,7 +52,7 @@ typedef struct Lexer {
 
 void token_name(Token *token, char *buf);
 
-void lexer_init(Lexer *lexer, Arena *arena, const char *src, size_t len);
+void lexer_init(Lexer *lexer, Arena *arena, FILE *file, size_t len);
 
 Token lexer_next(Lexer *lexer);
 

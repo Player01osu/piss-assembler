@@ -5,14 +5,14 @@
 #include "parser.h"
 #include "lexer.h"
 
-#if DEBUG_TRACE_GNU
+#ifdef DEBUG_TRACE_GNU
 #define span_join(a, b) ({printf("%s:%d:span_join(a, b)\n", __FILE__, __LINE__); span_join(a, b);})
 #endif
 
-void parser_init(Parser *parser, Arena *arena, const char *src, size_t len)
+void parser_init(Parser *parser, Arena *arena, FILE *file, size_t len)
 {
 	Lexer lexer = {0};
-	lexer_init(&lexer, arena, src, len);
+	lexer_init(&lexer, arena, file, len);
 	parser->span = (Span) { 0, 0, 0, 0 };
 	parser->lexer = lexer;
 	parser->arena = arena;
@@ -614,7 +614,7 @@ tailcall:
 		return NULL;
 	}
 
-#if DEBUG
+#ifdef DEBUG
 	if (parser->state == PARSE_DATA) {
 		assert(node->kind != N_INSTRUCTION);
 	} else if (parser->state == PARSE_TEXT) {
