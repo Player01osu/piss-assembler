@@ -294,14 +294,11 @@ tailcall:
 	case T_SECTION_TEXT:
 		parser->state = PARSE_TEXT;
 		goto tailcall;
-		break;
 	case T_SECTION_DATA:
 		parser->state = PARSE_DATA;
 		goto tailcall;
-		break;
 	case T_EOL:
 		goto tailcall;
-		break;
 	default: ;
 	}
 
