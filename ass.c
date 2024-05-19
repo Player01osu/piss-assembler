@@ -810,9 +810,12 @@ void parse_src(Ctx *context, Arena *arena, const char *filename, const char *src
 	Parser parser = {0};
 	parser_init(&parser, arena, src, len);
 
-	for (Node *node = parser_next(&parser); node->kind != N_EOF; node = parser_next(&parser)) {
-		if (node->kind == N_ILLEGAL) {
-			printf("%s:%zu:%zu:Parse failed:%s\n", filename, node->span.start_row, node->span.start_col, parser.error);
+	for (Node *node = parser_next(&parser);; node = parser_next(&parser)) {
+		if (!node) {
+			Span span = parser.span;
+			fprintf(stderr, "%s:%zu:%zu:Parse failed:%s\n", filename, span.start_row, span.start_col, parser.error);
+			break;
+		} else if (node->kind == N_EOF) {
 			break;
 		}
 

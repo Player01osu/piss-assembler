@@ -19,11 +19,11 @@
 #include "lexer.h"
 
 #define FERROR stderr
-#define panic(...) \
-	do { \
+#define panic(...)                                             \
+	do {                                                   \
 		fprintf(FERROR, "%s:%d:", __FILE__, __LINE__); \
-		fprintf(FERROR, __VA_ARGS__); \
-		exit(1); \
+		fprintf(FERROR, __VA_ARGS__);                  \
+		exit(1);                                       \
 	} while (0)
 #define BUF_SIZE 1024 * 4
 #define STACK_SIZE 1024 * 16

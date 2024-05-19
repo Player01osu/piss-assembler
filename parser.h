@@ -12,7 +12,6 @@ enum NodeKind {
 	N_DECLARATION,
 
 	N_EOF,
-	N_ILLEGAL,
 };
 
 enum InstructionKind {
@@ -108,6 +107,7 @@ typedef struct Parser {
 	Lexer lexer;
 	Arena *arena;
 	char *error;
+	Span span;
 	enum ParserState state;
 } Parser;
 
