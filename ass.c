@@ -293,6 +293,83 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                    \
 	}                                                 \
 
+#define OPN_INST(ty, suffix)                                                                     \
+	case I_PDEREF##suffix: {                                                                 \
+		STACK_CHECK;                                                                     \
+		ty **item = pop_stack(context, sizeof(*item));                                   \
+		push_stack(context, *item, sizeof(**item));                                      \
+		break;                                                                           \
+	}                                                                                        \
+	case I_PSET##suffix: {                                                                   \
+		STACK_CHECK;                                                                     \
+		ty **a = pop_stack(context, sizeof(*a));                                         \
+		STACK_CHECK;                                                                     \
+		ty *b = pop_stack(context, sizeof(*b));                                          \
+		**a = *b;                                                                        \
+		break;                                                                           \
+	}                                                                                        \
+	case I_POP##suffix: {                                                                    \
+		STACK_CHECK;                                                                     \
+		pop_stack(context, sizeof(ty));                                                  \
+		break;                                                                           \
+	}                                                                                        \
+	case I_SWAP##suffix: {                                                                   \
+		STACK_CHECK;                                                                     \
+		byte *a = pop_stack(context, sizeof(ty));                                        \
+		byte *b = pop_stack(context, sizeof(ty));                                        \
+		byte tmp[sizeof(ty)] = {0};                                                      \
+		memcpy(tmp, b, sizeof(ty));                                                      \
+		push_stack(context, a, sizeof(ty));                                              \
+		push_stack(context, tmp, sizeof(ty));                                            \
+		break;                                                                           \
+	}                                                                                        \
+	case I_DUPE##suffix: {                                                                   \
+		STACK_CHECK;                                                                     \
+		byte *stack_ptr = context->frame_ptr->ptr;                                       \
+		byte *a = &stack_ptr[-sizeof(ty)];                                               \
+		push_stack(context, a, sizeof(ty));                                              \
+		break;                                                                           \
+	}                                                                                        \
+	case I_COPY##suffix: {                                                                   \
+		STACK_CHECK;                                                                     \
+		byte *stack_ptr = context->frame_ptr->ptr;                                       \
+		byte *a = &stack_ptr[-sizeof(ty)];                                               \
+		size_t n = instruction->data.n;                                                  \
+		for (size_t i = 0; i < n; ++i) {                                                 \
+			push_stack(context, a, sizeof(ty));                                      \
+		}                                                                                \
+		break;                                                                           \
+	}                                                                                        \
+	case I_STORE##suffix: {                                                                  \
+		STACK_CHECK;                                                                     \
+		size_t n = instruction->data.n;                                                  \
+		byte *locals = context->frame_ptr->locals;                                       \
+		byte *slot = &locals[n];                                                         \
+		byte *a = pop_stack(context, sizeof(ty));                                        \
+		memcpy(slot, a, sizeof(ty));                                                     \
+		break;                                                                           \
+	}                                                                                        \
+	case I_LOAD##suffix: {                                                                   \
+		size_t n = instruction->data.n;                                                  \
+		byte *locals = context->frame_ptr->locals;                                       \
+		byte *slot = &locals[n];                                                         \
+		push_stack(context, slot, sizeof(ty));                                           \
+		break;                                                                           \
+	}                                                                                        \
+	case I_RET##suffix: {                                                                    \
+		FramePointer *stack_ptr = context->frame_ptr;                                    \
+		FramePointer *stack_ptr_prev = stack_ptr->prev;                                  \
+		size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]); \
+		byte *a = pop_stack(context, sizeof(ty));                                        \
+		byte tmp[sizeof(ty)] = {0};                                                      \
+		memcpy(tmp, a, sizeof(ty));                                                      \
+		context->frame_ptr = stack_ptr_prev;                                             \
+		context->pc = return_addr;                                                       \
+		free(stack_ptr);                                                                 \
+		push_stack(context, tmp, sizeof(ty));                                            \
+		break;                                                                           \
+	}                                                                                        \
+
 void exec_instruction(Ctx *context, Instruction *instruction)
 {
 #define STACK_CHECK do { if (empty_stack(context)) goto empty_stack; } while(0)
@@ -313,52 +390,13 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		push_stack(context, &slot, sizeof(slot));
 		break;
 	}
-	case I_PDEREF8: {
-		STACK_CHECK;
-		char **item = pop_stack(context, sizeof(*item));
-		push_stack(context, *item, sizeof(**item));
-		break;
-	}
-	case I_PDEREF32: {
-		STACK_CHECK;
-		int **item = pop_stack(context, sizeof(*item));
-		push_stack(context, *item, sizeof(**item));
-		break;
-	}
-	case I_PDEREF64: {
-		STACK_CHECK;
-		long **item = pop_stack(context, sizeof(*item));
-		push_stack(context, *item, sizeof(**item));
-		break;
-	}
-	case I_PSET8: {
-		STACK_CHECK;
-		char **a = pop_stack(context, sizeof(*a));
-		STACK_CHECK;
-		char *b = pop_stack(context, sizeof(*b));
-		**a = *b;
-		break;
-	}
-	case I_PSET32: {
-		STACK_CHECK;
-		int **a = pop_stack(context, sizeof(*a));
-		STACK_CHECK;
-		int *b = pop_stack(context, sizeof(*b));
-		**a = *b;
-		break;
-	}
-	case I_PSET64: {
-		STACK_CHECK;
-		long **a = pop_stack(context, sizeof(*a));
-		STACK_CHECK;
-		long *b = pop_stack(context, sizeof(*b));
-		**a = *b;
-		break;
-	}
 	ITYOP_INST(unsigned long, UL, "%lu")
 	ITYOP_INST(int, I, "%d")
 	ITYOP_INST(char, C, "%c")
 	TYOP_INST(float, F, "%f")
+	OPN_INST(int8_t, 8)
+	OPN_INST(int32_t, 32)
+	OPN_INST(int64_t, 64)
 #undef TYOP_INST
 #undef ITYOP_INST
 
@@ -367,191 +405,6 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		byte *stack_ptr = context->frame_ptr->ptr;
 		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 		printf("%d", *a);
-		break;
-	}
-
-
-	case I_POP8: {
-		STACK_CHECK;
-		pop_stack(context, 1);
-		break;
-	}
-	case I_POP32: {
-		STACK_CHECK;
-		pop_stack(context, 4);
-		break;
-	}
-	case I_POP64: {
-		STACK_CHECK;
-		pop_stack(context, 8);
-		break;
-	}
-	case I_SWAP8: {
-		STACK_CHECK;
-		byte *a = pop_stack(context, 1);
-		byte *b = pop_stack(context, 1);
-		byte tmp[1] = {0};
-		memcpy(tmp, b, 1);
-		push_stack(context, a, 1);
-		push_stack(context, tmp, 1);
-		break;
-	}
-	case I_SWAP32: {
-		STACK_CHECK;
-		byte *a = pop_stack(context, 4);
-		byte *b = pop_stack(context, 4);
-		byte tmp[4] = {0};
-		memcpy(tmp, b, 4);
-		push_stack(context, a, 4);
-		push_stack(context, tmp, 4);
-		break;
-	}
-	case I_SWAP64: {
-		STACK_CHECK;
-		byte *a = pop_stack(context, 8);
-		byte *b = pop_stack(context, 8);
-		byte tmp[8] = {0};
-		memcpy(tmp, b, 8);
-		push_stack(context, a, 8);
-		push_stack(context, tmp, 8);
-		break;
-	}
-	case I_DUPE8: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		byte *a = &stack_ptr[-1];
-		push_stack(context, a, 1);
-		break;
-	}
-	case I_DUPE32: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		byte *a = &stack_ptr[-4];
-		push_stack(context, a, 4);
-		break;
-	}
-	case I_DUPE64: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		byte *a = &stack_ptr[-8];
-		push_stack(context, a, 8);
-		break;
-	}
-	case I_COPY8: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		byte *a = &stack_ptr[-1];
-		size_t n = instruction->data.n;
-		for (size_t i = 0; i < n; ++i) {
-			push_stack(context, a, 1);
-		}
-		break;
-	}
-	case I_COPY32: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		byte *a = &stack_ptr[-4];
-		size_t n = instruction->data.n;
-		for (size_t i = 0; i < n; ++i) {
-			push_stack(context, a, 4);
-		}
-		break;
-	}
-	case I_COPY64: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		byte *a = &stack_ptr[-8];
-		size_t n = instruction->data.n;
-		for (size_t i = 0; i < n; ++i) {
-			push_stack(context, a, 8);
-		}
-		break;
-	}
-	case I_STORE8: {
-		STACK_CHECK;
-		size_t n = instruction->data.n;
-		byte *locals = context->frame_ptr->locals;
-		byte *slot = &locals[n];
-		byte *a = pop_stack(context, 1);
-		memcpy(slot, a, 1);
-		break;
-	}
-	case I_STORE32: {
-		STACK_CHECK;
-		size_t n = instruction->data.n;
-		byte *locals = context->frame_ptr->locals;
-		byte *slot = &locals[n];
-		byte *a = pop_stack(context, 4);
-		memcpy(slot, a, 4);
-		break;
-	}
-	case I_STORE64: {
-		STACK_CHECK;
-		size_t n = instruction->data.n;
-		byte *locals = context->frame_ptr->locals;
-		byte *slot = &locals[n];
-		byte *a = pop_stack(context, 8);
-		memcpy(slot, a, 8);
-		break;
-	}
-	case I_LOAD8: {
-		size_t n = instruction->data.n;
-		byte *locals = context->frame_ptr->locals;
-		byte *slot = &locals[n];
-		push_stack(context, slot, 1);
-		break;
-	}
-	case I_LOAD32: {
-		size_t n = instruction->data.n;
-		byte *locals = context->frame_ptr->locals;
-		byte *slot = &locals[n];
-		push_stack(context, slot, 4);
-		break;
-	}
-	case I_LOAD64: {
-		size_t n = instruction->data.n;
-		byte *locals = context->frame_ptr->locals;
-		byte *slot = &locals[n];
-		push_stack(context, slot, 8);
-		break;
-	}
-	case I_RET8: {
-		FramePointer *stack_ptr = context->frame_ptr;
-		FramePointer *stack_ptr_prev = stack_ptr->prev;
-		size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
-		byte *a = pop_stack(context, 1);
-		byte tmp[1] = {0};
-		memcpy(tmp, a, 1);
-		context->frame_ptr = stack_ptr_prev;
-		context->pc = return_addr;
-		free(stack_ptr);
-		push_stack(context, tmp, 1);
-		break;
-	}
-	case I_RET32: {
-		FramePointer *stack_ptr = context->frame_ptr;
-		FramePointer *stack_ptr_prev = stack_ptr->prev;
-		size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
-		byte *a = pop_stack(context, 4);
-		byte tmp[4] = {0};
-		memcpy(tmp, a, 4);
-		context->frame_ptr = stack_ptr_prev;
-		context->pc = return_addr;
-		free(stack_ptr);
-		push_stack(context, tmp, 4);
-		break;
-	}
-	case I_RET64: {
-		FramePointer *stack_ptr = context->frame_ptr;
-		FramePointer *stack_ptr_prev = stack_ptr->prev;
-		size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
-		byte *a = pop_stack(context, 8);
-		byte tmp[8] = {0};
-		memcpy(tmp, a, 8);
-		context->frame_ptr = stack_ptr_prev;
-		context->pc = return_addr;
-		free(stack_ptr);
-		push_stack(context, tmp, 8);
 		break;
 	}
 	case I_RET: {
