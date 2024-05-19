@@ -31,7 +31,6 @@ typedef struct FramePointer {
 	struct FramePointer *prev;
 } FramePointer;
 
-
 typedef struct Ctx {
 	byte stack[STACK_SIZE];
 	byte return_stack[STACK_SIZE];
@@ -41,7 +40,7 @@ typedef struct Ctx {
 	DeclarationMap declaration_map;
 	LabelMap label_map;
 
-	Instruction *instructions;
+	Instruction **instructions;
 	size_t instruction_cap;
 	size_t instruction_len;
 } Ctx;
@@ -136,27 +135,24 @@ FramePointer *context_pop_frame(Ctx *context)
 	return context->frame_ptr;
 }
 
-bool process_node(Ctx *context, Node *node, Instruction *instruction)
+Instruction *process_node(Ctx *context, Node *node)
 {
 	switch (node->kind) {
 	case N_INSTRUCTION:
-		*instruction = node->data.instruction;
-		break;
+		return &node->data.instruction;
 	case N_LABEL:
 		if (!insert_label(&context->label_map, node->data.s, context->pc)) {
 			panic("Failed to create label");
 		}
-		return false;
+		return NULL;
 	case N_DECLARATION:
 		if (!insert_declaration(&context->declaration_map, node->data.declaration)) {
 			panic("Failed to create declaration");
 		}
-		return false;
+		return NULL;
 	default:
 		panic("Unimplemented");
 	}
-
-	return true;
 }
 
 bool empty_stack(Ctx *context)
@@ -661,7 +657,7 @@ void context_destroy(Ctx *context)
 	free(context->instructions);
 }
 
-void context_push_instruction(Ctx *context, Instruction instruction)
+void context_push_instruction(Ctx *context, Instruction *instruction)
 {
 	if (context->instruction_len >= context->instruction_cap) {
 		context->instruction_cap *= 2;
@@ -703,7 +699,7 @@ bool resolve_load(Ctx *context, const char *data_name, void **data_ptr)
 void begin_execution(Ctx *context)
 {
 	while (context->pc < context->instruction_len) {
-		exec_instruction(context, &context->instructions[context->pc++]);
+		exec_instruction(context, context->instructions[context->pc++]);
 	}
 }
 
@@ -724,10 +720,11 @@ int parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, cons
 			break;
 		}
 
-		Instruction instruction = {0};
-		if (process_node(context, node, &instruction)) {
+		Instruction *instruction = process_node(context, node);
+		if (instruction) {
 			++context->pc;
-			context_push_instruction(context, instruction);
+			/* Get the offset since the region can reallocate */
+			context_push_instruction(context, (Instruction *) ((size_t) instruction - (size_t) arena->region));
 		}
 	}
 
@@ -736,7 +733,9 @@ int parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, cons
 
 	// Resolve labels
 	for (size_t i = 0; i < context->instruction_len; ++i) {
-		Instruction *instruction = &context->instructions[i];
+		/* Set the offset back to the region address */
+		context->instructions[i] = (Instruction *) ((size_t) arena->region + (size_t) context->instructions[i]);
+		Instruction *instruction = context->instructions[i];
 		if (instruction->kind == I_JUMP || instruction->kind == I_JUMPCMP) {
 			ssize_t location;
 			if (!label_location(context, instruction->data.s, &location)) {
