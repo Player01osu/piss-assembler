@@ -106,24 +106,21 @@ bool process_node(Ctx *context, Node *node, Instruction *instruction)
 #include "instructions.h"
 #undef INSTR
 #endif
-	case N_INSTRUCTION: {
+	case N_INSTRUCTION:
 		*instruction = node->data.instruction;
-	} break;
-	case N_LABEL: {
+		break;
+	case N_LABEL:
 		if (!insert_label(&context->label_map, node->data.s, context->pc)) {
 			panic("Failed to create label");
 		}
 		return false;
-	} break;
-	case N_DECLARATION: {
+	case N_DECLARATION:
 		if (!insert_declaration(&context->declaration_map, node->data.declaration)) {
 			panic("Failed to create declaration");
 		}
 		return false;
-	} break;
-	default: {
+	default:
 		panic("Unimplemented");
-	}
 	}
 
 	return true;
@@ -166,24 +163,28 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 	case I_CPUSH: {
 		char item = (char)instruction->data.lit.data.i;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_CPRINT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 		printf("%c", *a);
-	} break;
+		break;
+	}
 	case I_CIPRINT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 		printf("%d", *a);
-	} break;
+		break;
+	}
 
 	case I_PPUSH: {
 		void *item = instruction->data.ptr;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_PLOAD: {
 		void *data_ptr = instruction->data.ptr;
 		push_stack(context, &data_ptr, sizeof(data_ptr));
@@ -192,48 +193,56 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		byte *locals = context->frame_ptr->locals;
 		byte *slot = &locals[n];
 		push_stack(context, &slot, sizeof(slot));
-	} break;
+		break;
+	}
 	case I_PDEREF8: {
 		STACK_CHECK;
 		char **item = pop_stack(context, sizeof(*item));
 		push_stack(context, *item, sizeof(**item));
-	} break;
+		break;
+	}
 	case I_PDEREF32: {
 		STACK_CHECK;
 		int **item = pop_stack(context, sizeof(*item));
 		push_stack(context, *item, sizeof(**item));
-	} break;
+		break;
+	}
 	case I_PDEREF64: {
 		STACK_CHECK;
 		long **item = pop_stack(context, sizeof(*item));
 		push_stack(context, *item, sizeof(**item));
-	} break;
+		break;
+	}
 	case I_PSET8: {
 		STACK_CHECK;
 		char **a = pop_stack(context, sizeof(*a));
 		STACK_CHECK;
 		char *b = pop_stack(context, sizeof(*b));
 		**a = *b;
-	} break;
+		break;
+	}
 	case I_PSET32: {
 		STACK_CHECK;
 		int **a = pop_stack(context, sizeof(*a));
 		STACK_CHECK;
 		int *b = pop_stack(context, sizeof(*b));
 		**a = *b;
-	} break;
+		break;
+	}
 	case I_PSET64: {
 		STACK_CHECK;
 		long **a = pop_stack(context, sizeof(*a));
 		STACK_CHECK;
 		long *b = pop_stack(context, sizeof(*b));
 		**a = *b;
-	} break;
+		break;
+	}
 
 	case I_ULPUSH: {
 		uint64_t item = instruction->data.lit.data.i;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_ULADD: {
 		STACK_CHECK;
 		unsigned long *b = pop_stack(context, sizeof(*b));
@@ -242,7 +251,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		unsigned long item = *a + *b;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_ULSUB: {
 		STACK_CHECK;
 		unsigned long *b = pop_stack(context, sizeof(*b));
@@ -251,7 +261,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		unsigned long item = *a - *b;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_ULMULT: {
 		STACK_CHECK;
 		unsigned long *b = pop_stack(context, sizeof(*b));
@@ -260,7 +271,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		unsigned long item = *a * *b;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_ULDIV: {
 		STACK_CHECK;
 		unsigned long *b = pop_stack(context, sizeof(*b));
@@ -269,7 +281,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		unsigned long item = *a / *b;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_ULMOD: {
 		STACK_CHECK;
 		unsigned long *b = pop_stack(context, sizeof(*b));
@@ -278,18 +291,21 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		unsigned long item = *a % *b;
 		push_stack(context, &item, sizeof(item));
-	} break;
+		break;
+	}
 	case I_ULPRINT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		unsigned long *a = (unsigned long *)(&stack_ptr[-sizeof(*a)]);
 		printf("%lu", *a);
-	} break;
+		break;
+	}
 
 	case I_IPUSH: {
 		uint64_t item = instruction->data.lit.data.i;
 		push_stack(context, &item, sizeof(int));
-	} break;
+		break;
+	}
 	case I_IADD: {
 		STACK_CHECK;
 		int *b = (int *)pop_stack(context, 4);
@@ -298,7 +314,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		int item = *a + *b;
 		push_stack(context, &item, sizeof(int));
-	} break;
+		break;
+	}
 	case I_ISUB: {
 		STACK_CHECK;
 		int *b = (int *)pop_stack(context, 4);
@@ -307,7 +324,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		int item = *a - *b;
 		push_stack(context, &item, sizeof(int));
-	} break;
+		break;
+	}
 	case I_IMULT: {
 		STACK_CHECK;
 		int *b = (int *)pop_stack(context, 4);
@@ -316,7 +334,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		int item = *a * *b;
 		push_stack(context, &item, sizeof(int));
-	} break;
+		break;
+	}
 	case I_IDIV: {
 		STACK_CHECK;
 		int *b = (int *)pop_stack(context, 4);
@@ -325,7 +344,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		int item = *a / *b;
 		push_stack(context, &item, sizeof(int));
-	} break;
+		break;
+	}
 	case I_IMOD: {
 		STACK_CHECK;
 		int *b = (int *)pop_stack(context, 4);
@@ -334,13 +354,15 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		int item = *a % *b;
 		push_stack(context, &item, sizeof(int));
-	} break;
+		break;
+	}
 	case I_IPRINT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		int *a = (int *)&stack_ptr[-sizeof(*a)];
 		printf("%d", *a);
-	} break;
+		break;
+	}
 	case I_ICEQ: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -348,7 +370,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		int *a = (int *)(&stack_ptr[-(sizeof(int) * 2)]);
 		bool item = *a == *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 
 	case I_ULCLT: {
 		STACK_CHECK;
@@ -357,7 +380,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
 		bool item = *a < *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_ULCLE: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -365,7 +389,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
 		bool item = *a <= *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_ULCGT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -373,7 +398,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
 		bool item = *a > *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_ULCGE: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -381,7 +407,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
 		bool item = *a >= *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 
 	case I_ICLT: {
 		STACK_CHECK;
@@ -390,7 +417,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
 		bool item = *a < *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_ICLE: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -398,7 +426,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
 		bool item = *a <= *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_ICGT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -406,7 +435,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
 		bool item = *a > *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_ICGE: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -414,12 +444,14 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
 		bool item = *a >= *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 
 	case I_FPUSH: {
 		float item = instruction->data.lit.data.f;
 		push_stack(context, &item, sizeof(float));
-	} break;
+		break;
+	}
 	case I_FADD: {
 		STACK_CHECK;
 		float *b = (float *)pop_stack(context, 4);
@@ -428,7 +460,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		float item = *a + *b;
 		push_stack(context, &item, sizeof(float));
-	} break;
+		break;
+	}
 	case I_FSUB: {
 		STACK_CHECK;
 		float *b = (float *)pop_stack(context, 4);
@@ -437,7 +470,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		float item = *a - *b;
 		push_stack(context, &item, sizeof(float));
-	} break;
+		break;
+	}
 	case I_FMULT: {
 		STACK_CHECK;
 		float *b = (float *)pop_stack(context, 4);
@@ -446,7 +480,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		float item = *a * *b;
 		push_stack(context, &item, sizeof(float));
-	} break;
+		break;
+	}
 	case I_FDIV: {
 		STACK_CHECK;
 		float *b = (float *)pop_stack(context, 4);
@@ -455,13 +490,15 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 
 		float item = *a / *b;
 		push_stack(context, &item, sizeof(float));
-	} break;
+		break;
+	}
 	case I_FPRINT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		float *a = (float *)(&stack_ptr[-sizeof(float)]);
 		printf("%f", *a);
-	} break;
+		break;
+	}
 	case I_FCEQ: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -469,7 +506,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		float *a = (float *)(&stack_ptr[-(sizeof(float) * 2)]);
 		bool item = *a == *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_FCLT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -477,7 +515,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
 		bool item = *a < *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_FCLE: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -485,7 +524,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
 		bool item = *a <= *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_FCGT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -493,7 +533,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
 		bool item = *a > *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 	case I_FCGE: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -501,20 +542,24 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
 		bool item = *a >= *b;
 		push_stack(context, &item, 1);
-	} break;
+		break;
+	}
 
 	case I_POP8: {
 		STACK_CHECK;
 		pop_stack(context, 1);
-	} break;
+		break;
+	}
 	case I_POP32: {
 		STACK_CHECK;
 		pop_stack(context, 4);
-	} break;
+		break;
+	}
 	case I_POP64: {
 		STACK_CHECK;
 		pop_stack(context, 8);
-	} break;
+		break;
+	}
 	case I_SWAP8: {
 		STACK_CHECK;
 		byte *a = pop_stack(context, 1);
@@ -523,7 +568,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		memcpy(tmp, b, 1);
 		push_stack(context, a, 1);
 		push_stack(context, tmp, 1);
-	} break;
+		break;
+	}
 	case I_SWAP32: {
 		STACK_CHECK;
 		byte *a = pop_stack(context, 4);
@@ -532,7 +578,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		memcpy(tmp, b, 4);
 		push_stack(context, a, 4);
 		push_stack(context, tmp, 4);
-	} break;
+		break;
+	}
 	case I_SWAP64: {
 		STACK_CHECK;
 		byte *a = pop_stack(context, 8);
@@ -541,25 +588,29 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		memcpy(tmp, b, 8);
 		push_stack(context, a, 8);
 		push_stack(context, tmp, 8);
-	} break;
+		break;
+	}
 	case I_DUPE8: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		byte *a = &stack_ptr[-1];
 		push_stack(context, a, 1);
-	} break;
+		break;
+	}
 	case I_DUPE32: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		byte *a = &stack_ptr[-4];
 		push_stack(context, a, 4);
-	} break;
+		break;
+	}
 	case I_DUPE64: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
 		byte *a = &stack_ptr[-8];
 		push_stack(context, a, 8);
-	} break;
+		break;
+	}
 	case I_COPY8: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -568,7 +619,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		for (size_t i = 0; i < n; ++i) {
 			push_stack(context, a, 1);
 		}
-	} break;
+		break;
+	}
 	case I_COPY32: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -577,7 +629,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		for (size_t i = 0; i < n; ++i) {
 			push_stack(context, a, 4);
 		}
-	} break;
+		break;
+	}
 	case I_COPY64: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
@@ -586,7 +639,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		for (size_t i = 0; i < n; ++i) {
 			push_stack(context, a, 8);
 		}
-	} break;
+		break;
+	}
 	case I_STORE8: {
 		STACK_CHECK;
 		size_t n = instruction->data.n;
@@ -594,7 +648,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		byte *slot = &locals[n];
 		byte *a = pop_stack(context, 1);
 		memcpy(slot, a, 1);
-	} break;
+		break;
+	}
 	case I_STORE32: {
 		STACK_CHECK;
 		size_t n = instruction->data.n;
@@ -602,7 +657,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		byte *slot = &locals[n];
 		byte *a = pop_stack(context, 4);
 		memcpy(slot, a, 4);
-	} break;
+		break;
+	}
 	case I_STORE64: {
 		STACK_CHECK;
 		size_t n = instruction->data.n;
@@ -610,25 +666,29 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		byte *slot = &locals[n];
 		byte *a = pop_stack(context, 8);
 		memcpy(slot, a, 8);
-	} break;
+		break;
+	}
 	case I_LOAD8: {
 		size_t n = instruction->data.n;
 		byte *locals = context->frame_ptr->locals;
 		byte *slot = &locals[n];
 		push_stack(context, slot, 1);
-	} break;
+		break;
+	}
 	case I_LOAD32: {
 		size_t n = instruction->data.n;
 		byte *locals = context->frame_ptr->locals;
 		byte *slot = &locals[n];
 		push_stack(context, slot, 4);
-	} break;
+		break;
+	}
 	case I_LOAD64: {
 		size_t n = instruction->data.n;
 		byte *locals = context->frame_ptr->locals;
 		byte *slot = &locals[n];
 		push_stack(context, slot, 8);
-	} break;
+		break;
+	}
 	case I_RET8: {
 		FramePointer *stack_ptr = context->frame_ptr;
 		FramePointer *stack_ptr_prev = stack_ptr->prev;
@@ -640,7 +700,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		context->pc = return_addr;
 		free(stack_ptr);
 		push_stack(context, tmp, 1);
-	} break;
+		break;
+	}
 	case I_RET32: {
 		FramePointer *stack_ptr = context->frame_ptr;
 		FramePointer *stack_ptr_prev = stack_ptr->prev;
@@ -652,7 +713,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		context->pc = return_addr;
 		free(stack_ptr);
 		push_stack(context, tmp, 4);
-	} break;
+		break;
+	}
 	case I_RET64: {
 		FramePointer *stack_ptr = context->frame_ptr;
 		FramePointer *stack_ptr_prev = stack_ptr->prev;
@@ -664,7 +726,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		context->pc = return_addr;
 		free(stack_ptr);
 		push_stack(context, tmp, 8);
-	} break;
+		break;
+	}
 	case I_RET: {
 		FramePointer *stack_ptr = context->frame_ptr;
 		FramePointer *stack_ptr_prev = stack_ptr->prev;
@@ -677,7 +740,8 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		context->pc = return_addr;
 		free(stack_ptr);
 		push_stack(context, tmp, n);
-	} break;
+		break;
+	}
 	case I_JUMPPROC: {
 		size_t argc = instruction->data.proc.argc;
 		FramePointer *stack_ptr = context->frame_ptr;
@@ -696,10 +760,12 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		context->pc += instruction->data.proc.location.offset;
 		// Initial locals with args
 		memcpy(stack_ptr_new->locals, stack_ptr_new->ptr, argc);
-	} break;
+		break;
+	}
 	case I_JUMP: {
 		context->pc += instruction->data.offset;
-	} break;
+		break;
+	}
 	case I_JUMPCMP: {
 		STACK_CHECK;
 		byte *ptr = &context->frame_ptr->ptr[-1];
@@ -707,10 +773,10 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 			context->pc += instruction->data.offset;
 			break;
 		}
-	} break;
-	default: {
-		fprintf(stderr, "%s:%d:UNIMPLMEMENTED:%d\n", __FILE__, __LINE__, instruction->kind);
+		break;
 	}
+	default:
+		fprintf(stderr, "%s: {%d:UNIMPLMEMENTED:%d\n", __FILE__, __LINE__, instruction->kind);
 	}
 
 	return;
