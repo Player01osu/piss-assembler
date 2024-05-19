@@ -15,8 +15,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "parser.h"
-#include "lexer.h"
+#include "arena.h"
 
 #define FERROR stderr
 #define panic(...)                                             \
@@ -47,5 +46,9 @@ typedef struct LabelMap {
 	size_t cap;
 	size_t len;
 } LabelMap;
+
+#define arena_xalloc(arena, size) _arena_xalloc(__FILE__, __LINE__, arena, size)
+
+void *_arena_xalloc(char *filename, int row, Arena *arena, size_t size);
 
 #endif

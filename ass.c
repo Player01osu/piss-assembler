@@ -46,6 +46,24 @@ typedef struct Ctx {
 	size_t instruction_len;
 } Ctx;
 
+void *_arena_xalloc(char *filename, int row, Arena *arena, size_t size)
+{
+	if (arena->index + size > arena->size) {
+		size_t old_size = arena->size;
+		size_t new_size = arena->size * 2;
+#ifdef DEBUG_TRACE
+		fprintf(stderr, "%s:%d:DEBUG:attempting to growing arena... %lu => %lu\n", filename, row, old_size, new_size);
+#endif
+		if (!arena_expand(arena, new_size)) {
+			fprintf(stderr, "%s:%d:ERROR:failed to expand arena... %lu => %lu\n", filename, row, old_size, new_size);
+		}
+	}
+
+	void *block = arena_alloc(arena, size);
+	assert(block);
+	return block;
+}
+
 void print_help(void)
 {
 	fputs(HELP, stdout);

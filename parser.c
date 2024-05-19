@@ -32,7 +32,7 @@ Token parser_bump(Parser *parser)
 #define parser_err(parser, msg)                                      \
 	do {                                                         \
 		size_t len = strlen(msg) + 1;                        \
-		char *_s = (char *) arena_alloc(parser->arena, len); \
+		char *_s = (char *) arena_xalloc(parser->arena, len); \
 		memcpy(_s, msg, len);                                \
 		parser->error = _s;                                  \
 	} while (0)
@@ -283,7 +283,7 @@ int parse_data(Parser *parser, const Token *token, Node *node)
 Node *parser_next(Parser *parser)
 {
 	Token token;
-	Node *node = arena_alloc(parser->arena, sizeof(*node));
+	Node *node = arena_xalloc(parser->arena, sizeof(*node));
 	int errcode = 0;
 
 tailcall:

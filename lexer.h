@@ -2,7 +2,9 @@
 #define LEXER_H
 
 #include <stdint.h>
+
 #include "arena.h"
+#include "ass.h"
 
 enum TokenKind {
 #define TOK_ENUM

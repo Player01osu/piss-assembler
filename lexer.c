@@ -5,10 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ass.h"
 #include "lexer.h"
-#include "arena.h"
-
-#define panic(msg) { fprintf(stderr, "%s:%d:"msg, __FILE__, __LINE__); exit(1); }
 
 #define span_dbg_print(span) _span_dbg_print(__FILE__, __LINE__, span)
 
@@ -121,7 +119,7 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	// before adding the `1 +`, but I feel like it should be
 	// correct without it...
 	size_t len = 1 + p - buf;
-	char *s = arena_alloc(lexer->arena, sizeof(*s) * len);
+	char *s = arena_xalloc(lexer->arena, sizeof(*s) * len);
 	memcpy(s, buf, sizeof(*s) * len);
 	s[len - 1] = '\0';
 
@@ -303,7 +301,7 @@ void lexer_consume_string_lit(Lexer *lexer, Token *token)
 		c = lexer_bump(lexer);
 	}
 
-	char *s = arena_alloc(lexer->arena, string_builder.len + 1);
+	char *s = arena_xalloc(lexer->arena, string_builder.len + 1);
 	string_builder_build(&string_builder, s);
 	token->data.s = s;
 }
