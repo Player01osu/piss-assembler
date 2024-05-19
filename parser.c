@@ -5,6 +5,10 @@
 #include "parser.h"
 #include "lexer.h"
 
+#if DEBUG_TRACE_GNU
+#define span_join(a, b) ({printf("%s:%d:span_join(a, b)\n", __FILE__, __LINE__); span_join(a, b);})
+#endif
+
 void parser_init(Parser *parser, Arena *arena, const char *src, size_t len)
 {
 	Lexer lexer = {0};
