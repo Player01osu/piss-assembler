@@ -10,6 +10,13 @@
 
 #define panic(msg) { fprintf(stderr, "%s:%d:"msg, __FILE__, __LINE__); exit(1); }
 
+#define span_dbg_print(span) _span_dbg_print(__FILE__, __LINE__, span)
+
+void _span_dbg_print(char *filename, int row, Span span)
+{
+	fprintf(stderr, "%s:%d:SPAN: %lu:%lu => %lu:%lu\n", filename, row, span.start_row, span.start_col, span.end_row, span.end_col);
+}
+
 Span span_join(Span a, Span b)
 {
 	assert(a.start_row < b.start_row || (a.start_row == b.start_row && a.start_col <= b.start_col));
