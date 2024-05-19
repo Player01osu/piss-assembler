@@ -29,12 +29,12 @@ Token parser_bump(Parser *parser)
 	return lexer_next(&parser->lexer);
 }
 
-#define parser_err(parser, msg)                                      \
-	do {                                                         \
-		size_t len = strlen(msg) + 1;                        \
+#define parser_err(parser, msg)                                       \
+	do {                                                          \
+		size_t len = strlen(msg) + 1;                         \
 		char *_s = (char *) arena_xalloc(parser->arena, len); \
-		memcpy(_s, msg, len);                                \
-		parser->error = _s;                                  \
+		memcpy(_s, msg, len);                                 \
+		parser->error = _s;                                   \
 	} while (0)
 
 #define single_stmt_expect(parser, instruction_kind)                 \
