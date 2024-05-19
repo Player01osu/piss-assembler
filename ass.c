@@ -155,9 +155,9 @@ Instruction *process_node(Ctx *context, Node *node)
 	}
 }
 
-bool empty_stack(Ctx *context)
+bool is_empty_stack(Ctx *context, size_t n)
 {
-	return context->frame_ptr->ptr <= context->frame_ptr->start;
+	return (context->frame_ptr->ptr - n) < context->frame_ptr->start;
 }
 
 void dump_stack(Ctx *context)
@@ -192,50 +192,46 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                        \
 	}                                                     \
 	case I_##prefix##ADD: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		ty *b = pop_stack(context, sizeof(*b));       \
-		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
 		ty item = *a + *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
 	}                                                     \
 	case I_##prefix##SUB: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		ty *b = pop_stack(context, sizeof(*b));       \
-		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
 		ty item = *a - *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
 	}                                                     \
 	case I_##prefix##MULT: {                              \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		ty *b = pop_stack(context, sizeof(*b));       \
-		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
 		ty item = *a * *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
 	}                                                     \
 	case I_##prefix##DIV: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		ty *b = pop_stack(context, sizeof(*b));       \
-		STACK_CHECK;                                  \
 		ty *a = pop_stack(context, sizeof(*a));       \
 		ty item = *a / *b;                            \
 		push_stack(context, &item, sizeof(item));     \
 		break;                                        \
 	}                                                     \
 	case I_##prefix##PRINT: {                             \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty));                      \
 		byte *stack_ptr = context->frame_ptr->ptr;    \
 		ty *a = (ty *)(&stack_ptr[-sizeof(*a)]);      \
 		printf(printf_str, *a);                       \
 		break;                                        \
 	}                                                     \
 	case I_##prefix##CEQ: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		byte *stack_ptr = context->frame_ptr->ptr;    \
 		ty *b = (ty *)(&stack_ptr[-(sizeof(*b) * 1)]);\
 		ty *a = (ty *)(&stack_ptr[-(sizeof(*a) * 2)]);\
@@ -244,7 +240,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                        \
 	}                                                     \
 	case I_##prefix##CLT: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		byte *stack_ptr = context->frame_ptr->ptr;    \
 		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
 		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
@@ -253,7 +249,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                        \
 	}                                                     \
 	case I_##prefix##CLE: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		byte *stack_ptr = context->frame_ptr->ptr;    \
 		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
 		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
@@ -262,7 +258,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                        \
 	}                                                     \
 	case I_##prefix##CGT: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		byte *stack_ptr = context->frame_ptr->ptr;    \
 		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
 		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
@@ -271,7 +267,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                        \
 	}                                                     \
 	case I_##prefix##CGE: {                               \
-		STACK_CHECK;                                  \
+		STACK_CHECK(sizeof(ty) * 2);                  \
 		byte *stack_ptr = context->frame_ptr->ptr;    \
 		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
 		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
@@ -284,9 +280,8 @@ void *pop_stack(Ctx *context, size_t n)
 #define ITYOP_INST(ty, prefix, printf_str)                \
 	TYOP_INST(ty, prefix, printf_str)                 \
 	case I_##prefix##MOD: {                           \
-		STACK_CHECK;                              \
+		STACK_CHECK(sizeof(ty) * 2);              \
 		ty *b = pop_stack(context, sizeof(*b));   \
-		STACK_CHECK;                              \
 		ty *a = pop_stack(context, sizeof(*a));   \
 		ty item = *a % *b;                        \
 		push_stack(context, &item, sizeof(item)); \
@@ -295,26 +290,25 @@ void *pop_stack(Ctx *context, size_t n)
 
 #define OPN_INST(ty, suffix)                                                                     \
 	case I_PDEREF##suffix: {                                                                 \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty *));                                                       \
 		ty **item = pop_stack(context, sizeof(*item));                                   \
 		push_stack(context, *item, sizeof(**item));                                      \
 		break;                                                                           \
 	}                                                                                        \
 	case I_PSET##suffix: {                                                                   \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty *) + sizeof(ty));                                          \
 		ty **a = pop_stack(context, sizeof(*a));                                         \
-		STACK_CHECK;                                                                     \
 		ty *b = pop_stack(context, sizeof(*b));                                          \
 		**a = *b;                                                                        \
 		break;                                                                           \
 	}                                                                                        \
 	case I_POP##suffix: {                                                                    \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty));                                                         \
 		pop_stack(context, sizeof(ty));                                                  \
 		break;                                                                           \
 	}                                                                                        \
 	case I_SWAP##suffix: {                                                                   \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty) * 2);                                                     \
 		byte *a = pop_stack(context, sizeof(ty));                                        \
 		byte *b = pop_stack(context, sizeof(ty));                                        \
 		byte tmp[sizeof(ty)] = {0};                                                      \
@@ -324,14 +318,14 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                                                           \
 	}                                                                                        \
 	case I_DUPE##suffix: {                                                                   \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty));                                                         \
 		byte *stack_ptr = context->frame_ptr->ptr;                                       \
 		byte *a = &stack_ptr[-sizeof(ty)];                                               \
 		push_stack(context, a, sizeof(ty));                                              \
 		break;                                                                           \
 	}                                                                                        \
 	case I_COPY##suffix: {                                                                   \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty));                                                         \
 		byte *stack_ptr = context->frame_ptr->ptr;                                       \
 		byte *a = &stack_ptr[-sizeof(ty)];                                               \
 		size_t n = instruction->data.n;                                                  \
@@ -341,7 +335,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                                                           \
 	}                                                                                        \
 	case I_STORE##suffix: {                                                                  \
-		STACK_CHECK;                                                                     \
+		STACK_CHECK(sizeof(ty));                                                         \
 		size_t n = instruction->data.n;                                                  \
 		byte *locals = context->frame_ptr->locals;                                       \
 		byte *slot = &locals[n];                                                         \
@@ -357,6 +351,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                                                           \
 	}                                                                                        \
 	case I_RET##suffix: {                                                                    \
+		STACK_CHECK(sizeof(ty));                                                         \
 		FramePointer *stack_ptr = context->frame_ptr;                                    \
 		FramePointer *stack_ptr_prev = stack_ptr->prev;                                  \
 		size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]); \
@@ -372,7 +367,7 @@ void *pop_stack(Ctx *context, size_t n)
 
 void exec_instruction(Ctx *context, Instruction *instruction)
 {
-#define STACK_CHECK do { if (empty_stack(context)) goto empty_stack; } while(0)
+#define STACK_CHECK(n) do { if (is_empty_stack(context, n)) goto empty_stack; } while(0)
 
 	switch (instruction->kind) {
 	case I_PPUSH: {
@@ -397,11 +392,12 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 	OPN_INST(int8_t, 8)
 	OPN_INST(int32_t, 32)
 	OPN_INST(int64_t, 64)
+#undef OPN_INST
 #undef TYOP_INST
 #undef ITYOP_INST
 
 	case I_CIPRINT: {
-		STACK_CHECK;
+		STACK_CHECK(sizeof(char));
 		byte *stack_ptr = context->frame_ptr->ptr;
 		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 		printf("%d", *a);
@@ -446,7 +442,7 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		break;
 	}
 	case I_JUMPCMP: {
-		STACK_CHECK;
+		STACK_CHECK(1);
 		byte *ptr = &context->frame_ptr->ptr[-1];
 		if (*ptr) {
 			context->pc += instruction->data.offset;
