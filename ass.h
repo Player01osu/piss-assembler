@@ -25,8 +25,8 @@
 		fprintf(FERROR, __VA_ARGS__);                  \
 		exit(1);                                       \
 	} while (0)
-#define BUF_SIZE 1024 * 4
-#define STACK_SIZE 1024 * 16
+#define BUF_SIZE (1024 * 4)
+#define STACK_SIZE (1024 * 16)
 #define LOCAL_SIZE 256
 
 enum DataSize {
