@@ -26,7 +26,7 @@ fib_ret:
     ret32
 
 _start:
-    ipush 10
+    ipush 30
     jumpproc fib_proc 4
     iprint
 
