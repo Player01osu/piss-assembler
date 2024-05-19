@@ -150,30 +150,124 @@ void *pop_stack(Ctx *context, size_t n)
 	return top;
 }
 
+#define TYOP_INST(ty, prefix, printf_str) \
+	case I_##prefix##PUSH: {                              \
+		uint64_t item = instruction->data.lit.data.i; \
+		push_stack(context, &item, sizeof(ty));       \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##ADD: {                               \
+		STACK_CHECK;                                  \
+		ty *b = pop_stack(context, sizeof(*b));       \
+		STACK_CHECK;                                  \
+		ty *a = pop_stack(context, sizeof(*a));       \
+                                                              \
+		ty item = *a + *b;                            \
+		push_stack(context, &item, sizeof(item));     \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##SUB: {                               \
+		STACK_CHECK;                                  \
+		ty *b = pop_stack(context, sizeof(*b));       \
+		STACK_CHECK;                                  \
+		ty *a = pop_stack(context, sizeof(*a));       \
+                                                              \
+		ty item = *a - *b;                            \
+		push_stack(context, &item, sizeof(item));     \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##MULT: {                              \
+		STACK_CHECK;                                  \
+		ty *b = pop_stack(context, sizeof(*b));       \
+		STACK_CHECK;                                  \
+		ty *a = pop_stack(context, sizeof(*a));       \
+                                                              \
+		ty item = *a * *b;                            \
+		push_stack(context, &item, sizeof(item));     \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##DIV: {                               \
+		STACK_CHECK;                                  \
+		ty *b = pop_stack(context, sizeof(*b));       \
+		STACK_CHECK;                                  \
+		ty *a = pop_stack(context, sizeof(*a));       \
+                                                              \
+		ty item = *a / *b;                            \
+		push_stack(context, &item, sizeof(item));     \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##PRINT: {                             \
+		STACK_CHECK;                                  \
+		byte *stack_ptr = context->frame_ptr->ptr;    \
+		ty *a = (ty *)(&stack_ptr[-sizeof(*a)]);      \
+		printf(printf_str, *a);                       \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##CEQ: {                               \
+		STACK_CHECK;                                  \
+		byte *stack_ptr = context->frame_ptr->ptr;    \
+		ty *b = (ty *)(&stack_ptr[-(sizeof(*b) * 1)]);\
+		ty *a = (ty *)(&stack_ptr[-(sizeof(*a) * 2)]);\
+		bool item = *a == *b;                         \
+		push_stack(context, &item, 1);                \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##CLT: {                               \
+		STACK_CHECK;                                  \
+		byte *stack_ptr = context->frame_ptr->ptr;    \
+		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
+		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
+		bool item = *a < *b;                          \
+		push_stack(context, &item, 1);                \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##CLE: {                               \
+		STACK_CHECK;                                  \
+		byte *stack_ptr = context->frame_ptr->ptr;    \
+		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
+		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
+		bool item = *a <= *b;                         \
+		push_stack(context, &item, 1);                \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##CGT: {                               \
+		STACK_CHECK;                                  \
+		byte *stack_ptr = context->frame_ptr->ptr;    \
+		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
+		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
+		bool item = *a > *b;                          \
+		push_stack(context, &item, 1);                \
+		break;                                        \
+	}                                                     \
+	case I_##prefix##CGE: {                               \
+		STACK_CHECK;                                  \
+		byte *stack_ptr = context->frame_ptr->ptr;    \
+		ty *b = (ty *)&stack_ptr[-(sizeof(*b) * 1)];  \
+		ty *a = (ty *)&stack_ptr[-(sizeof(*a) * 2)];  \
+		bool item = *a >= *b;                         \
+		push_stack(context, &item, 1);                \
+		break;                                        \
+	}
+
+/* Integer types also have `mod` operation */
+#define ITYOP_INST(ty, prefix, printf_str)                \
+	TYOP_INST(ty, prefix, printf_str)                 \
+	case I_##prefix##MOD: {                           \
+		STACK_CHECK;                              \
+		ty *b = pop_stack(context, sizeof(*b));   \
+		STACK_CHECK;                              \
+		ty *a = pop_stack(context, sizeof(*a));   \
+                                                          \
+		ty item = *a % *b;                        \
+		push_stack(context, &item, sizeof(item)); \
+		break;                                    \
+	}                                                 \
+
 void exec_instruction(Ctx *context, Instruction *instruction)
 {
 #define STACK_CHECK do { if (empty_stack(context)) goto empty_stack; } while(0)
-	switch (instruction->kind) {
-	case I_CPUSH: {
-		char item = (char)instruction->data.lit.data.i;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_CPRINT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
-		printf("%c", *a);
-		break;
-	}
-	case I_CIPRINT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
-		printf("%d", *a);
-		break;
-	}
 
+	switch (instruction->kind) {
 	case I_PPUSH: {
 		void *item = instruction->data.ptr;
 		push_stack(context, &item, sizeof(item));
@@ -231,313 +325,21 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		**a = *b;
 		break;
 	}
+	ITYOP_INST(unsigned long, UL, "%lu")
+	ITYOP_INST(int, I, "%d")
+	ITYOP_INST(char, C, "%c")
+	TYOP_INST(float, F, "%f")
+#undef TYOP_INST
+#undef ITYOP_INST
 
-	case I_ULPUSH: {
-		uint64_t item = instruction->data.lit.data.i;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_ULADD: {
-		STACK_CHECK;
-		unsigned long *b = pop_stack(context, sizeof(*b));
-		STACK_CHECK;
-		unsigned long *a = pop_stack(context, sizeof(*a));
-
-		unsigned long item = *a + *b;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_ULSUB: {
-		STACK_CHECK;
-		unsigned long *b = pop_stack(context, sizeof(*b));
-		STACK_CHECK;
-		unsigned long *a = pop_stack(context, sizeof(*a));
-
-		unsigned long item = *a - *b;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_ULMULT: {
-		STACK_CHECK;
-		unsigned long *b = pop_stack(context, sizeof(*b));
-		STACK_CHECK;
-		unsigned long *a = pop_stack(context, sizeof(*a));
-
-		unsigned long item = *a * *b;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_ULDIV: {
-		STACK_CHECK;
-		unsigned long *b = pop_stack(context, sizeof(*b));
-		STACK_CHECK;
-		unsigned long *a = pop_stack(context, sizeof(*a));
-
-		unsigned long item = *a / *b;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_ULMOD: {
-		STACK_CHECK;
-		unsigned long *b = pop_stack(context, sizeof(*b));
-		STACK_CHECK;
-		unsigned long *a = pop_stack(context, sizeof(*a));
-
-		unsigned long item = *a % *b;
-		push_stack(context, &item, sizeof(item));
-		break;
-	}
-	case I_ULPRINT: {
+	case I_CIPRINT: {
 		STACK_CHECK;
 		byte *stack_ptr = context->frame_ptr->ptr;
-		unsigned long *a = (unsigned long *)(&stack_ptr[-sizeof(*a)]);
-		printf("%lu", *a);
-		break;
-	}
-
-	case I_IPUSH: {
-		uint64_t item = instruction->data.lit.data.i;
-		push_stack(context, &item, sizeof(int));
-		break;
-	}
-	case I_IADD: {
-		STACK_CHECK;
-		int *b = (int *)pop_stack(context, 4);
-		STACK_CHECK;
-		int *a = (int *)pop_stack(context, 4);
-
-		int item = *a + *b;
-		push_stack(context, &item, sizeof(int));
-		break;
-	}
-	case I_ISUB: {
-		STACK_CHECK;
-		int *b = (int *)pop_stack(context, 4);
-		STACK_CHECK;
-		int *a = (int *)pop_stack(context, 4);
-
-		int item = *a - *b;
-		push_stack(context, &item, sizeof(int));
-		break;
-	}
-	case I_IMULT: {
-		STACK_CHECK;
-		int *b = (int *)pop_stack(context, 4);
-		STACK_CHECK;
-		int *a = (int *)pop_stack(context, 4);
-
-		int item = *a * *b;
-		push_stack(context, &item, sizeof(int));
-		break;
-	}
-	case I_IDIV: {
-		STACK_CHECK;
-		int *b = (int *)pop_stack(context, 4);
-		STACK_CHECK;
-		int *a = (int *)pop_stack(context, 4);
-
-		int item = *a / *b;
-		push_stack(context, &item, sizeof(int));
-		break;
-	}
-	case I_IMOD: {
-		STACK_CHECK;
-		int *b = (int *)pop_stack(context, 4);
-		STACK_CHECK;
-		int *a = (int *)pop_stack(context, 4);
-
-		int item = *a % *b;
-		push_stack(context, &item, sizeof(int));
-		break;
-	}
-	case I_IPRINT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		int *a = (int *)&stack_ptr[-sizeof(*a)];
+		char *a = (char *)(&stack_ptr[-sizeof(*a)]);
 		printf("%d", *a);
 		break;
 	}
-	case I_ICEQ: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		int *b = (int *)(&stack_ptr[-(sizeof(int) * 1)]);
-		int *a = (int *)(&stack_ptr[-(sizeof(int) * 2)]);
-		bool item = *a == *b;
-		push_stack(context, &item, 1);
-		break;
-	}
 
-	case I_ULCLT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
-		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
-		bool item = *a < *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_ULCLE: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
-		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
-		bool item = *a <= *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_ULCGT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
-		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
-		bool item = *a > *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_ULCGE: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		unsigned long *b = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 1)];
-		unsigned long *a = (unsigned long *)&stack_ptr[-(sizeof(unsigned long) * 2)];
-		bool item = *a >= *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-
-	case I_ICLT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
-		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
-		bool item = *a < *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_ICLE: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
-		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
-		bool item = *a <= *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_ICGT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
-		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
-		bool item = *a > *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_ICGE: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		int *b = (int *)&stack_ptr[-(sizeof(int) * 1)];
-		int *a = (int *)&stack_ptr[-(sizeof(int) * 2)];
-		bool item = *a >= *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-
-	case I_FPUSH: {
-		float item = instruction->data.lit.data.f;
-		push_stack(context, &item, sizeof(float));
-		break;
-	}
-	case I_FADD: {
-		STACK_CHECK;
-		float *b = (float *)pop_stack(context, 4);
-		STACK_CHECK;
-		float *a = (float *)pop_stack(context, 4);
-
-		float item = *a + *b;
-		push_stack(context, &item, sizeof(float));
-		break;
-	}
-	case I_FSUB: {
-		STACK_CHECK;
-		float *b = (float *)pop_stack(context, 4);
-		STACK_CHECK;
-		float *a = (float *)pop_stack(context, 4);
-
-		float item = *a - *b;
-		push_stack(context, &item, sizeof(float));
-		break;
-	}
-	case I_FMULT: {
-		STACK_CHECK;
-		float *b = (float *)pop_stack(context, 4);
-		STACK_CHECK;
-		float *a = (float *)pop_stack(context, 4);
-
-		float item = *a * *b;
-		push_stack(context, &item, sizeof(float));
-		break;
-	}
-	case I_FDIV: {
-		STACK_CHECK;
-		float *b = (float *)pop_stack(context, 4);
-		STACK_CHECK;
-		float *a = (float *)pop_stack(context, 4);
-
-		float item = *a / *b;
-		push_stack(context, &item, sizeof(float));
-		break;
-	}
-	case I_FPRINT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		float *a = (float *)(&stack_ptr[-sizeof(float)]);
-		printf("%f", *a);
-		break;
-	}
-	case I_FCEQ: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		float *b = (float *)(&stack_ptr[-(sizeof(float) * 1)]);
-		float *a = (float *)(&stack_ptr[-(sizeof(float) * 2)]);
-		bool item = *a == *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_FCLT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
-		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
-		bool item = *a < *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_FCLE: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
-		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
-		bool item = *a <= *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_FCGT: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
-		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
-		bool item = *a > *b;
-		push_stack(context, &item, 1);
-		break;
-	}
-	case I_FCGE: {
-		STACK_CHECK;
-		byte *stack_ptr = context->frame_ptr->ptr;
-		float *b = (float *)&stack_ptr[-(sizeof(float) * 1)];
-		float *a = (float *)&stack_ptr[-(sizeof(float) * 2)];
-		bool item = *a >= *b;
-		push_stack(context, &item, 1);
-		break;
-	}
 
 	case I_POP8: {
 		STACK_CHECK;
