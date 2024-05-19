@@ -707,16 +707,19 @@ void begin_execution(Ctx *context)
 	}
 }
 
-void parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, const size_t len)
+int parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, const size_t len)
 {
+	int errcode = 0;
 	Parser parser = {0};
 	parser_init(&parser, arena, file, len);
 
 	for (Node *node = parser_next(&parser);; node = parser_next(&parser)) {
+		/* TODO: Work on error recovery */
 		if (!node) {
 			Span span = parser.span;
 			fprintf(stderr, "%s:%zu:%zu:Parse failed:%s\n", filename, span.start_row, span.start_col, parser.error);
-			break;
+			errcode = -1;
+			continue;
 		} else if (node->kind == N_EOF) {
 			break;
 		}
@@ -727,6 +730,8 @@ void parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, con
 			context_push_instruction(context, instruction);
 		}
 	}
+
+	if (errcode) return errcode;
 	context->pc = 0;
 
 	// Resolve labels
@@ -760,6 +765,8 @@ void parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, con
 			instruction->data.ptr = data_ptr;
 		}
 	}
+
+	return errcode;
 }
 
 int main(int argc, char **argv)
@@ -787,7 +794,7 @@ int main(int argc, char **argv)
 	context_init(&context);
 
 	size_t len = sb.st_size;
-	parse_src(&context, arena, path, f, len);
+	if (parse_src(&context, arena, path, f, len)) goto error_3;
 	if (fclose(f)) panic("Failed to close file\n");
 	begin_execution(&context);
 	context_destroy(&context);
@@ -795,6 +802,9 @@ int main(int argc, char **argv)
 
 	return 0;
 
+error_3:
+	context_destroy(&context);
+	arena_destroy(arena);
 error_2:
 	free(f);
 error_1:
