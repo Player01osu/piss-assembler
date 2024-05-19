@@ -100,12 +100,6 @@ FramePointer *context_pop_frame(Ctx *context)
 bool process_node(Ctx *context, Node *node, Instruction *instruction)
 {
 	switch (node->kind) {
-
-#if 0
-#define INSTR(x, _) case N_##x: instruction->kind = I_##x; break;
-#include "instructions.h"
-#undef INSTR
-#endif
 	case N_INSTRUCTION:
 		*instruction = node->data.instruction;
 		break;
