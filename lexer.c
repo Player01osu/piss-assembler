@@ -40,7 +40,7 @@ void lexer_init(Lexer *lexer, Arena *arena, FILE *file, size_t len)
 	lexer->row = 0;
 	lexer->arena = arena;
 
-	size_t n = fread(lexer->buf, 1, LEXER_BUF_SIZE, lexer->file);
+	size_t n = fread(lexer->buf, 1, sizeof(lexer->buf), lexer->file);
 
 #ifdef DEBUG_TRACE
 	/* TODO: Factor debug trace printf into macro */
@@ -51,10 +51,10 @@ void lexer_init(Lexer *lexer, Arena *arena, FILE *file, size_t len)
 int lexer_bump(Lexer *lexer)
 {
 	if (lexer->remaining <= 0) return EOF;
-	size_t idx = (lexer->len - lexer->remaining--) % (LEXER_BUF_SIZE);
+	size_t idx = (lexer->len - lexer->remaining--) % sizeof(lexer->buf);
 	int c = lexer->buf[idx];
-	if (idx + 1 == (LEXER_BUF_SIZE)) {
-		size_t n = fread(lexer->buf, 1, LEXER_BUF_SIZE, lexer->file);
+	if (idx + 1 == sizeof(lexer->buf)) {
+		size_t n = fread(lexer->buf, 1, sizeof(lexer->buf), lexer->file);
 
 #ifdef DEBUG_TRACE
 		/* TODO: Factor debug trace printf into macro */
@@ -78,7 +78,7 @@ int lexer_bump(Lexer *lexer)
 int lexer_peak(Lexer *lexer)
 {
 	if (lexer->remaining <= 0) return EOF;
-	size_t idx = (lexer->len - lexer->remaining) % (LEXER_BUF_SIZE);
+	size_t idx = (lexer->len - lexer->remaining) % sizeof(lexer->buf);
 	return lexer->buf[idx];
 }
 
@@ -116,7 +116,7 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 	lexer_fill_ident_buf(lexer, &p);
 
 #define TOK_KW(tok, s)                        \
-	if (strncmp(s, buf, BUF_SIZE) == 0) { \
+	if (strncmp(s, buf, sizeof(buf)) == 0) { \
 		token->kind = tok;            \
 		goto exit;                    \
 	}
@@ -151,7 +151,7 @@ bool is_num_lit(char c)
 void lexer_consume_signed_num_lit(Lexer *lexer, Token *token, char c)
 {
 	bool is_float = false;
-	char buf[BUF_SIZE] = {0};
+	char buf[SBUF_SIZE] = {0};
 	char peak = lexer_peak(lexer);
 	char *p = buf;
 	*p++ = c;
@@ -193,7 +193,7 @@ bool is_valid_base(char c)
 void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 {
 	bool is_float = false;
-	char buf[BUF_SIZE] = {0};
+	char buf[SBUF_SIZE] = {0};
 	char peak = lexer_peak(lexer);
 	char *p = buf;
 	*p++ = c;
@@ -356,12 +356,12 @@ void lexer_consume_char_lit(Lexer *lexer, Token *token)
 
 void lexer_consume_section(Lexer *lexer, Token *token)
 {
-	char buf[BUF_SIZE] = {0};
+	char buf[SBUF_SIZE] = {0};
 	char *p = buf;
 
 	lexer_fill_ident_buf(lexer, &p);
 
-#define CMP_TOK(s, tok) do { if (strncmp(s, buf, BUF_SIZE) == 0) { token->kind = tok; return; } } while(0)
+#define CMP_TOK(s, tok) do { if (strncmp(s, buf, sizeof(buf)) == 0) { token->kind = tok; return; } } while(0)
 	CMP_TOK("data", T_SECTION_DATA);
 	CMP_TOK("text", T_SECTION_TEXT);
 #undef CMP_TOK
