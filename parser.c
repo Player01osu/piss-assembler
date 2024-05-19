@@ -283,7 +283,7 @@ Node *parser_next(Parser *parser)
 	Node *node = arena_alloc(parser->arena, sizeof(*node));
 	int errcode = 0;
 
-tailcall: ;
+tailcall:
 	token = parser_bump(parser);
 	node->span = token.span;
 

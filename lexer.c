@@ -356,10 +356,13 @@ void lexer_consume_section(Lexer *lexer, Token *token)
 Token lexer_next(Lexer *lexer)
 {
 	Token token = {0};
-tailcall: ;
-	char c = lexer_bump(lexer);
-	size_t start_row = lexer->row;
-	size_t start_col = lexer->col;
+	size_t start_row;
+	size_t start_col;
+	char c;
+tailcall:
+	start_row = lexer->row;
+	start_col = lexer->col;
+	c = lexer_bump(lexer);
 
 	if (c == '\0') {
 		token.kind = T_EOF;
