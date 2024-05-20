@@ -303,7 +303,7 @@ tailcall:
 	}
 
 	switch (parser->state) {
-	case PARSE_DATA: {
+	case PARSE_DATA:
 		switch (token.kind) {
 		case T_IDENT:
 			errcode = parse_data(parser, &token, node);
@@ -317,8 +317,8 @@ tailcall:
 			errcode = -1;
 		}
 		}
-	} break;
-	case PARSE_TEXT: {
+		break;
+	case PARSE_TEXT:
 		switch (token.kind) {
 		case T_ULPUSH:
 			errcode = parse_push(parser, node, I_ULPUSH);
@@ -603,7 +603,7 @@ tailcall:
 			errcode = -1;
 		}
 		}
-	} break;
+		break;
 	}
 
 	if (errcode < 0) {
