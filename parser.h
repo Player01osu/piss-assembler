@@ -39,17 +39,11 @@ enum ParserState {
 	PARSE_TEXT,
 };
 
-union LitData {
-	const char *s;
-	uint64_t ui;
-	int64_t i;
-	float f;
-	double d;
-};
+typedef union Data LitData;
 
 typedef struct Lit {
 	enum LitKind kind;
-	union LitData data;
+	LitData data;
 	Span span;
 } Lit;
 

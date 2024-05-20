@@ -36,6 +36,14 @@ enum DataSize {
 
 typedef unsigned char byte;
 
+union Data {
+	const char *s;
+	uint64_t ui;
+	int64_t i;
+	float f;
+	double d;
+};
+
 typedef struct Label {
 	const char *name;
 	size_t location;

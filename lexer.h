@@ -21,22 +21,16 @@ typedef struct Span {
 	size_t end_col;
 } Span;
 
-union TokenData {
-	const char *s;
-	uint64_t ui;
-	int64_t i;
-	float f;
-	double d;
-	size_t t_size;
-};
+typedef union Data TokenData;
 
 typedef struct Token {
 	enum TokenKind kind;
-	union TokenData data;
+	TokenData data;
 	Span span;
 } Token;
 
 #define LEXER_BUF_SIZE (1024 * 64)
+//#define LEXER_BUF_SIZE (1)
 typedef struct Lexer {
 	char buf[LEXER_BUF_SIZE];
 	FILE *file;
