@@ -89,16 +89,11 @@ int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_ki
 		float casted;
 		if (lit->kind == L_INT) {
 			casted = (float) next.data.i;
+			dprintf("Casting integer literal into float:`%ld` => `%f`\n", next.data.i, casted);
 		} else {
 			casted = (float) next.data.ui;
+			dprintf("Casting integer literal into float:`%lu` => `%f`\n", next.data.ui, casted);
 		}
-#if DEBUG_TRACE
-		if (lit->kind == L_INT) {
-			fprintf(stderr, "Casting integer literal into float:`%ld` => `%f`\n", next.data.i, casted);
-		} else {
-			fprintf(stderr, "Casting integer literal into float:`%lu` => `%f`\n", next.data.ui, casted);
-		}
-#endif /* DEBUG_TRACE */
 		lit->kind = L_FLOAT;
 		lit->data.f = casted;
 	} else if (lit_kind_mask & (L_INT | L_UINT) && lit->kind & L_FLOAT) {
@@ -107,17 +102,12 @@ int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_ki
 			int64_t casted = (int64_t) next.data.f;
 			lit->kind = L_INT;
 			lit->data.i = casted;
-#if DEBUG_TRACE
-			fprintf(stderr, "Casting float into integer literal:`%f` => `%ld`\n", next.data.f, casted);
-#endif /* DEBUG_TRACE */
-
+			dprintf("Casting float into integer literal:`%f` => `%ld`\n", next.data.f, casted);
 		} else {
 			uint64_t casted = (uint64_t) next.data.f;
 			lit->kind = L_UINT;
 			lit->data.ui = casted;
-#if DEBUG_TRACE
-			fprintf(stderr, "Casting float into integer literal:`%f` => `%lu`\n", next.data.f, casted);
-#endif /* DEBUG_TRACE */
+			dprintf("Casting float into integer literal:`%f` => `%lu`\n", next.data.f, casted);
 		}
 	} else if (!(lit->kind & lit_kind_mask)) {
 		/* TODO: Report what literal types are allowed */
@@ -130,16 +120,11 @@ int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_ki
 		float casted;
 		if (lit->kind == L_INT) {
 			casted = (float) next.data.i;
+			dprintf("Casting integer literal into float:`%ld` => `%f`\n", next.data.i, casted);
 		} else {
 			casted = (float) next.data.ui;
+			dprintf("Casting integer literal into float:`%lu` => `%f`\n", next.data.ui, casted);
 		}
-#if DEBUG_TRACE
-		if (lit->kind == L_INT) {
-			fprintf(stderr, "Casting integer literal into float:`%ld` => `%f`\n", next.data.i, casted);
-		} else {
-			fprintf(stderr, "Casting integer literal into float:`%lu` => `%f`\n", next.data.ui, casted);
-		}
-#endif /* DEBUG_TRACE */
 		lit->kind = L_FLOAT;
 		lit->data.f = casted;
 	} else if (!(lit->kind & lit_kind_mask)) {

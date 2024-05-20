@@ -20,3 +20,7 @@
     iprint
     cpush '\n'
     cprint
+    ipush -727.727
+    iprint
+    cpush '\n'
+    cprint

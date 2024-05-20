@@ -41,11 +41,7 @@ void lexer_init(Lexer *lexer, Arena *arena, FILE *file, size_t len)
 	lexer->arena = arena;
 
 	size_t n = fread(lexer->buf, 1, sizeof(lexer->buf), lexer->file);
-
-#ifdef DEBUG_TRACE
-	/* TODO: Factor debug trace printf into macro */
-	fprintf(stderr, "%s:%d:DEBUG:filled buffer with %lu bytes\n", __FILE__, __LINE__, n);
-#endif
+	dprintf("filled buffer with %lu bytes\n", n);
 }
 
 int lexer_bump(Lexer *lexer)
@@ -55,11 +51,7 @@ int lexer_bump(Lexer *lexer)
 	int c = lexer->buf[idx];
 	if (idx + 1 == sizeof(lexer->buf)) {
 		size_t n = fread(lexer->buf, 1, sizeof(lexer->buf), lexer->file);
-
-#ifdef DEBUG_TRACE
-		/* TODO: Factor debug trace printf into macro */
-		fprintf(stderr, "%s:%d:DEBUG:filled buffer with %lu bytes\n", __FILE__, __LINE__, n);
-#endif
+		dprintf("filled buffer with %lu bytes\n", n);
 	}
 
 	lexer->prev_row = lexer->row;

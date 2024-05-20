@@ -24,6 +24,16 @@
 		fprintf(FERROR, __VA_ARGS__);                  \
 		exit(1);                                       \
 	} while (0)
+
+#ifdef DEBUG_TRACE
+#define dprintf(...)                                                 \
+	do {                                                         \
+		fprintf(FERROR, "%s:%d:DEBUG:", __FILE__, __LINE__); \
+		fprintf(FERROR, __VA_ARGS__);                        \
+	} while (0)
+#else
+#define dprintf(...) ;
+#endif
 #define BUF_SIZE (1024 * 4)
 #define STACK_SIZE (1024 * 16)
 #define LOCAL_SIZE 256
