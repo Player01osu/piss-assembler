@@ -1,0 +1,15 @@
+.text
+    jump _start
+
+_start:
+    pop8 ; Stack is empty
+
+    ipush 69
+    iprint ; 69
+    cpush 69
+    ciprint ; 69
+
+    pop64 ; Stack is empty
+    pop8
+    pop64 ; Stack is empty
+    pop32
