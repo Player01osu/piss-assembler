@@ -28,10 +28,10 @@ enum DeclarationKind {
 };
 
 enum LitKind {
-	L_INT,
-	L_UINT,
-	L_FLOAT,
-	L_PTR,
+	L_INT = 1,
+	L_UINT = 2,
+	L_FLOAT = 4,
+	L_PTR = 8,
 };
 
 enum ParserState {

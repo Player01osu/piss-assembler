@@ -52,7 +52,7 @@ Token parser_bump(Parser *parser)
 		return 0;                                            \
 	} while (0)
 
-int parse_push(Parser *parser, Node *node, enum InstructionKind kind)
+int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_kind_mask)
 {
 	Token next = parser_bump(parser);
 	Lit *lit = &node->data.instruction.data.lit;
@@ -77,6 +77,77 @@ int parse_push(Parser *parser, Node *node, enum InstructionKind kind)
 		return -1;
 	}
 
+#ifdef STRONG_LIT_TYPE
+	if (!(lit->kind & lit_kind_mask)) {
+		/* TODO: Report what literal types are allowed */
+		parser_err(parser, "Unexpected literal type");
+		return -1;
+	}
+#elif WEAK_LIT_TYPE
+	if (lit_kind_mask & L_FLOAT && lit->kind & (L_INT | L_UINT)) {
+		assert(lit->kind == L_INT || lit->kind == L_UINT);
+		float casted;
+		if (lit->kind == L_INT) {
+			casted = (float) next.data.i;
+		} else {
+			casted = (float) next.data.ui;
+		}
+#if DEBUG_TRACE
+		if (lit->kind == L_INT) {
+			fprintf(stderr, "Casting integer literal into float:`%ld` => `%f`\n", next.data.i, casted);
+		} else {
+			fprintf(stderr, "Casting integer literal into float:`%lu` => `%f`\n", next.data.ui, casted);
+		}
+#endif /* DEBUG_TRACE */
+		lit->kind = L_FLOAT;
+		lit->data.f = casted;
+	} else if (lit_kind_mask & (L_INT | L_UINT) && lit->kind & L_FLOAT) {
+		assert(lit->kind == L_FLOAT);
+		if (next.data.f < 0.0) {
+			int64_t casted = (int64_t) next.data.f;
+			lit->kind = L_INT;
+			lit->data.i = casted;
+#if DEBUG_TRACE
+			fprintf(stderr, "Casting float into integer literal:`%f` => `%ld`\n", next.data.f, casted);
+#endif /* DEBUG_TRACE */
+
+		} else {
+			uint64_t casted = (uint64_t) next.data.f;
+			lit->kind = L_UINT;
+			lit->data.ui = casted;
+#if DEBUG_TRACE
+			fprintf(stderr, "Casting float into integer literal:`%f` => `%lu`\n", next.data.f, casted);
+#endif /* DEBUG_TRACE */
+		}
+	} else if (!(lit->kind & lit_kind_mask)) {
+		/* TODO: Report what literal types are allowed */
+		parser_err(parser, "Unexpected literal type");
+		return -1;
+	}
+#else /* STRONG_LIT_TYPE_CAST_FLOAT */
+	if (lit_kind_mask & L_FLOAT && lit->kind & (L_INT | L_UINT)) {
+		assert(lit->kind == L_INT || lit->kind == L_UINT);
+		float casted;
+		if (lit->kind == L_INT) {
+			casted = (float) next.data.i;
+		} else {
+			casted = (float) next.data.ui;
+		}
+#if DEBUG_TRACE
+		if (lit->kind == L_INT) {
+			fprintf(stderr, "Casting integer literal into float:`%ld` => `%f`\n", next.data.i, casted);
+		} else {
+			fprintf(stderr, "Casting integer literal into float:`%lu` => `%f`\n", next.data.ui, casted);
+		}
+#endif /* DEBUG_TRACE */
+		lit->kind = L_FLOAT;
+		lit->data.f = casted;
+	} else if (!(lit->kind & lit_kind_mask)) {
+		/* TODO: Report what literal types are allowed */
+		parser_err(parser, "Unexpected literal type");
+		return -1;
+	}
+#endif
 	next = parser_bump(parser);
 	if (!is_end_of_statement(next.kind)) {
 		parser_err(parser, "Expected newline");
@@ -321,7 +392,7 @@ tailcall:
 	case PARSE_TEXT:
 		switch (token.kind) {
 		case T_ULPUSH:
-			errcode = parse_push(parser, node, I_ULPUSH);
+			errcode = parse_push(parser, node, I_ULPUSH, L_INT | L_UINT);
 			break;
 		case T_ULADD:
 			errcode = parse_single_stmt(parser, node, I_ULADD);
@@ -343,7 +414,7 @@ tailcall:
 			break;
 
 		case T_IPUSH:
-			errcode = parse_push(parser, node, I_IPUSH);
+			errcode = parse_push(parser, node, I_IPUSH, L_UINT | L_INT);
 			break;
 		case T_IADD:
 			errcode = parse_single_stmt(parser, node, I_IADD);
@@ -365,7 +436,7 @@ tailcall:
 			break;
 
 		case T_FPUSH:
-			errcode = parse_push(parser, node, I_FPUSH);
+			errcode = parse_push(parser, node, I_FPUSH, L_FLOAT);
 			break;
 		case T_FADD:
 			errcode = parse_single_stmt(parser, node, I_FADD);
@@ -384,7 +455,7 @@ tailcall:
 			break;
 
 		case T_CPUSH:
-			errcode = parse_push(parser, node, I_CPUSH);
+			errcode = parse_push(parser, node, I_CPUSH, L_UINT | L_INT);
 			break;
 		case T_CADD:
 			errcode = parse_single_stmt(parser, node, I_CADD);
@@ -409,7 +480,7 @@ tailcall:
 			break;
 
 		case T_PPUSH:
-			errcode = parse_push(parser, node, I_PPUSH);
+			errcode = parse_push(parser, node, I_PPUSH, L_PTR);
 			break;
 		case T_PLOAD:
 			errcode = parse_idx(parser, node, I_PLOAD);

@@ -1,2 +1,22 @@
+    ; int-to-float can be converted losslessly,
+    ; but strict literal types can be enabled
+    ; in feature flag
+    ;
+    ; `-DSTRONG_LIT_TYPE`
     fpush 12
     fprint
+    cpush '\n'
+    cprint
+
+    ; float-to-int autocasting is only allowed
+    ; if compiled with feature flag
+    ;
+    ; `-DWEAK_LIT_TYPE`
+    ipush 69.0
+    iprint
+    cpush '\n'
+    cprint
+    ipush -420.0
+    iprint
+    cpush '\n'
+    cprint
