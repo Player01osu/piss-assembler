@@ -53,4 +53,8 @@ Token lexer_next(Lexer *lexer);
 
 Span span_join(Span a, Span b);
 
+#define span_dbg_print(span) _span_dbg_print(__FILE__, __LINE__, span)
+
+void _span_dbg_print(char *filename, int row, Span span);
+
 #endif // LEXER_H
