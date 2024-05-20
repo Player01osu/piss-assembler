@@ -387,6 +387,7 @@ void exec_instruction(Ctx *context, Instruction *instruction)
 		FramePointer *stack_ptr = context->frame_ptr;
 		FramePointer *stack_ptr_prev = stack_ptr->prev;
 		size_t n = instruction->data.n;
+		STACK_CHECK(n);
 		size_t return_addr = *(size_t *)(&stack_ptr->return_stack_ptr[-sizeof(size_t)]);
 		byte *a = pop_stack(context, n);
 		byte tmp[n];
