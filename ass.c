@@ -135,26 +135,6 @@ FramePointer *context_pop_frame(Ctx *context)
 	return context->frame_ptr;
 }
 
-Instruction *process_node(Ctx *context, Node *node)
-{
-	switch (node->kind) {
-	case N_INSTRUCTION:
-		return &node->data.instruction;
-	case N_LABEL:
-		if (!insert_label(&context->label_map, node->data.s, context->pc)) {
-			panic("Failed to create label");
-		}
-		return NULL;
-	case N_DECLARATION:
-		if (!insert_declaration(&context->declaration_map, node->data.declaration)) {
-			panic("Failed to create declaration");
-		}
-		return NULL;
-	default:
-		panic("Unimplemented");
-	}
-}
-
 bool is_empty_stack(Ctx *context, size_t n)
 {
 	return (context->frame_ptr->ptr - n) < context->frame_ptr->start;
@@ -564,17 +544,26 @@ int parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, cons
 			break;
 		}
 
-		Instruction *instruction = process_node(context, node);
-		if (instruction) {
-			++context->pc;
+		switch (node->kind) {
+		case N_INSTRUCTION:
 			/* Get the offset since the region can reallocate */
-			context_push_instruction(context, (Instruction *) ((size_t) instruction - (size_t) arena->region));
+			context_push_instruction(context, (Instruction *) ((size_t) &node->data.instruction - (size_t) arena->region));
+			break;
+		case N_LABEL:
+			if (!insert_label(&context->label_map, node->data.s, context->instruction_len)) {
+				panic("Failed to create label");
+			}
+			break;
+		case N_DECLARATION:
+			if (!insert_declaration(&context->declaration_map, node->data.declaration)) {
+				panic("Failed to create declaration");
+			}
+			break;
+		default:
+			panic("Unimplemented");
 		}
 	}
-
-	if (errcode) return errcode;
-	context->pc = 0;
-
+	if (errcode != 0) return errcode;
 	// Resolve labels
 	for (size_t i = 0; i < context->instruction_len; ++i) {
 		/* Set the offset back to the region address */
