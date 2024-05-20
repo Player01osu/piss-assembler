@@ -43,7 +43,8 @@ union LitData {
 	const char *s;
 	uint64_t ui;
 	int64_t i;
-	double f;
+	float f;
+	double d;
 };
 
 typedef struct Lit {
