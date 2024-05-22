@@ -26,7 +26,7 @@ Span span_join(Span a, Span b)
 	};
 }
 
-bool is_ident(char c)
+static bool is_ident(char c)
 {
 	return isalnum(c) || c == '_';
 }
@@ -44,7 +44,7 @@ void lexer_init(Lexer *lexer, Arena *arena, FILE *file, size_t len)
 	dprintf("filled buffer with %lu bytes\n", n);
 }
 
-int lexer_bump(Lexer *lexer)
+static int lexer_bump(Lexer *lexer)
 {
 	if (lexer->remaining <= 0) return EOF;
 	size_t idx = (lexer->len - lexer->remaining--) % sizeof(lexer->buf);
@@ -67,7 +67,7 @@ int lexer_bump(Lexer *lexer)
 	return c;
 }
 
-int lexer_peak(Lexer *lexer)
+static int lexer_peak(Lexer *lexer)
 {
 	if (lexer->remaining <= 0) return EOF;
 	size_t idx = (lexer->len - lexer->remaining) % sizeof(lexer->buf);
@@ -90,7 +90,7 @@ void token_name(Token *token, char *buf)
 #undef TOK
 }
 
-void lexer_fill_ident_buf(Lexer *lexer, char **p)
+static void lexer_fill_ident_buf(Lexer *lexer, char **p)
 {
 	while (is_ident(lexer_peak(lexer))) {
 		**p = lexer_bump(lexer);
@@ -99,7 +99,7 @@ void lexer_fill_ident_buf(Lexer *lexer, char **p)
 	**p = '\0';
 }
 
-void lexer_consume_ident(Lexer *lexer, Token *token, char c)
+static void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 {
 	char buf[SBUF_SIZE] = {0};
 	char *p = buf;
@@ -135,12 +135,12 @@ void lexer_consume_ident(Lexer *lexer, Token *token, char c)
 exit: ;
 }
 
-bool is_num_lit(char c)
+static bool is_num_lit(char c)
 {
 	return isdigit(c) || c == '.';
 }
 
-void lexer_consume_signed_num_lit(Lexer *lexer, Token *token, char c)
+static void lexer_consume_signed_num_lit(Lexer *lexer, Token *token, char c)
 {
 	bool is_float = false;
 	char buf[SBUF_SIZE] = {0};
@@ -166,7 +166,7 @@ void lexer_consume_signed_num_lit(Lexer *lexer, Token *token, char c)
 	}
 }
 
-bool is_valid_digit(char c, int base)
+static bool is_valid_digit(char c, int base)
 {
 	switch (base) {
 	case 16:
@@ -177,12 +177,12 @@ bool is_valid_digit(char c, int base)
 	}
 }
 
-bool is_valid_base(char c)
+static bool is_valid_base(char c)
 {
 	return c == 'x' || c == 'X';
 }
 
-void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
+static void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 {
 	bool is_float = false;
 	char buf[SBUF_SIZE] = {0};
@@ -238,7 +238,7 @@ void lexer_consume_num_lit(Lexer *lexer, Token *token, char c)
 	}
 }
 
-void lexer_consume_comment(Lexer *lexer)
+static void lexer_consume_comment(Lexer *lexer)
 {
 	while (lexer_peak(lexer) != '\n') lexer_bump(lexer);
 }
@@ -273,7 +273,7 @@ void string_builder_build(StringBuilder *string_builder, char *buf)
 	free(string_builder->items);
 }
 
-void lexer_consume_string_lit(Lexer *lexer, Token *token)
+static void lexer_consume_string_lit(Lexer *lexer, Token *token)
 {
 	StringBuilder string_builder = {0};
 	int c = lexer_bump(lexer);
@@ -314,7 +314,7 @@ void lexer_consume_string_lit(Lexer *lexer, Token *token)
 	token->data.s = s;
 }
 
-void lexer_consume_char_lit(Lexer *lexer, Token *token)
+static void lexer_consume_char_lit(Lexer *lexer, Token *token)
 {
 	char c = lexer_bump(lexer);
 
@@ -346,7 +346,7 @@ void lexer_consume_char_lit(Lexer *lexer, Token *token)
 	}
 }
 
-void lexer_consume_section(Lexer *lexer, Token *token)
+static void lexer_consume_section(Lexer *lexer, Token *token)
 {
 	char buf[SBUF_SIZE] = {0};
 	char *p = buf;

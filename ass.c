@@ -84,12 +84,12 @@ void *_xrealloc(char *filename, int row, void *ptr, size_t size)
 	return block;
 }
 
-void print_help(void)
+static void print_help(void)
 {
 	fputs(HELP, stdout);
 }
 
-bool insert_label(LabelMap *label_map, const char *name, size_t location)
+static bool insert_label(LabelMap *label_map, const char *name, size_t location)
 {
 	if (label_map->len >= label_map->cap) {
 		label_map->cap *= 2;
@@ -103,7 +103,7 @@ bool insert_label(LabelMap *label_map, const char *name, size_t location)
 	return true;
 }
 
-bool insert_declaration(DeclarationMap *declaration_map, Declaration declaration)
+static bool insert_declaration(DeclarationMap *declaration_map, Declaration declaration)
 {
 	if (declaration_map->len >= declaration_map->cap) {
 		declaration_map->cap *= 2;
@@ -114,7 +114,7 @@ bool insert_declaration(DeclarationMap *declaration_map, Declaration declaration
 	return true;
 }
 
-FramePointer *context_push_frame(Ctx *context)
+static FramePointer *context_push_frame(Ctx *context)
 {
 	FramePointer *p = xmalloc(sizeof(FramePointer));
 	if (context->frame_ptr) {
@@ -126,7 +126,7 @@ FramePointer *context_push_frame(Ctx *context)
 	return context->frame_ptr;
 }
 
-FramePointer *context_pop_frame(Ctx *context)
+static FramePointer *context_pop_frame(Ctx *context)
 {
 	if (!context->frame_ptr->prev) return NULL;
 	FramePointer *p = context->frame_ptr;
@@ -135,19 +135,19 @@ FramePointer *context_pop_frame(Ctx *context)
 	return context->frame_ptr;
 }
 
-bool is_empty_stack(Ctx *context, size_t n)
+static bool is_empty_stack(Ctx *context, size_t n)
 {
 	return (context->frame_ptr->ptr - n) < context->frame_ptr->start;
 }
 
-void dump_stack(Ctx *context)
+static void dump_stack(Ctx *context)
 {
 	for (size_t i = 0; i < STACK_SIZE; ++i) {
 		fprintf(stderr, "%d,", context->stack[i]);
 	}
 }
 
-void push_stack(Ctx *context, void *data, size_t size)
+static void push_stack(Ctx *context, void *data, size_t size)
 {
 	if (context->frame_ptr->ptr - context->stack + size >= STACK_SIZE) {
 		dump_stack(context);
@@ -158,7 +158,7 @@ void push_stack(Ctx *context, void *data, size_t size)
 	context->frame_ptr->ptr += size;
 }
 
-void *pop_stack(Ctx *context, size_t n)
+static void *pop_stack(Ctx *context, size_t n)
 {
 	context->frame_ptr->ptr -= n;
 	byte *top = context->frame_ptr->ptr;
@@ -345,7 +345,7 @@ void *pop_stack(Ctx *context, size_t n)
 		break;                                                                           \
 	}                                                                                        \
 
-void exec_instruction(Ctx *context, Instruction *instruction)
+static void exec_instruction(Ctx *context, Instruction *instruction)
 {
 #define STACK_CHECK(n) do { if (is_empty_stack(context, n)) goto empty_stack; } while(0)
 
@@ -443,7 +443,7 @@ empty_stack:
 #undef STACK_CHECK
 }
 
-void context_init(Ctx *context)
+static void context_init(Ctx *context)
 {
 	context_push_frame(context);
 	context->frame_ptr->ptr = context->stack;
@@ -470,7 +470,7 @@ void context_init(Ctx *context)
 	context->pc = 0;
 }
 
-void context_destroy(Ctx *context)
+static void context_destroy(Ctx *context)
 {
 	while (context->frame_ptr) {
 		FramePointer *p = context->frame_ptr;
@@ -482,7 +482,7 @@ void context_destroy(Ctx *context)
 	free(context->instructions);
 }
 
-void context_push_instruction(Ctx *context, Instruction *instruction)
+static void context_push_instruction(Ctx *context, Instruction *instruction)
 {
 	if (context->instruction_len >= context->instruction_cap) {
 		context->instruction_cap *= 2;
@@ -493,7 +493,7 @@ void context_push_instruction(Ctx *context, Instruction *instruction)
 }
 
 // TODO: Use a map
-bool label_location(Ctx *context, const char *label_name, ssize_t *location)
+static bool label_location(Ctx *context, const char *label_name, ssize_t *location)
 {
 	LabelMap *label_map = &context->label_map;
 	for (size_t i = 0; i < label_map->len; ++i) {
@@ -507,7 +507,7 @@ bool label_location(Ctx *context, const char *label_name, ssize_t *location)
 	return false;
 }
 
-bool resolve_load(Ctx *context, const char *data_name, void **data_ptr)
+static bool resolve_load(Ctx *context, const char *data_name, void **data_ptr)
 {
 	DeclarationMap *declaration_map = &context->declaration_map;
 	for (size_t i = 0; i < declaration_map->len; ++i) {
@@ -521,14 +521,14 @@ bool resolve_load(Ctx *context, const char *data_name, void **data_ptr)
 	return false;
 }
 
-void begin_execution(Ctx *context)
+static void begin_execution(Ctx *context)
 {
 	while (context->pc < context->instruction_len) {
 		exec_instruction(context, context->instructions[context->pc++]);
 	}
 }
 
-int parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, const size_t len)
+static int parse_src(Ctx *context, Arena *arena, const char *filename, FILE *file, const size_t len)
 {
 	int errcode = 0;
 	Parser parser = {0};

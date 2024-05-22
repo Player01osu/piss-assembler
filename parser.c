@@ -19,12 +19,12 @@ void parser_init(Parser *parser, Arena *arena, FILE *file, size_t len)
 	parser->state = PARSE_TEXT;
 }
 
-bool is_end_of_statement(enum TokenKind kind)
+static bool is_end_of_statement(enum TokenKind kind)
 {
 	return kind == T_EOL || kind == T_EOF;
 }
 
-Token parser_bump(Parser *parser)
+static Token parser_bump(Parser *parser)
 {
 	return lexer_next(&parser->lexer);
 }
@@ -52,7 +52,7 @@ Token parser_bump(Parser *parser)
 		return 0;                                            \
 	} while (0)
 
-int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_kind_mask)
+static int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_kind_mask)
 {
 	Token next = parser_bump(parser);
 	Lit *lit = &node->data.instruction.data.lit;
@@ -142,7 +142,7 @@ int parse_push(Parser *parser, Node *node, enum InstructionKind kind, int lit_ki
 	return 0;
 }
 
-int parse_idx(Parser *parser, Node *node, enum InstructionKind kind)
+static int parse_idx(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
@@ -166,12 +166,12 @@ int parse_idx(Parser *parser, Node *node, enum InstructionKind kind)
 	return 0;
 }
 
-int parse_single_stmt(Parser *parser, Node *node, enum InstructionKind kind)
+static int parse_single_stmt(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	single_stmt_expect(parser, kind);
 }
 
-int parse_jump(Parser *parser, Node *node)
+static int parse_jump(Parser *parser, Node *node)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
@@ -196,7 +196,7 @@ int parse_jump(Parser *parser, Node *node)
 	return 0;
 }
 
-int parse_jumpcmp(Parser *parser, Node *node, enum InstructionKind kind)
+static int parse_jumpcmp(Parser *parser, Node *node, enum InstructionKind kind)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
@@ -221,7 +221,7 @@ int parse_jumpcmp(Parser *parser, Node *node, enum InstructionKind kind)
 	return 0;
 }
 
-int parse_jumpproc(Parser *parser, Node *node)
+static int parse_jumpproc(Parser *parser, Node *node)
 {
 	Token next = parser_bump(parser);
 	node->data.instruction.kind = I_JUMPPROC;
@@ -252,7 +252,7 @@ int parse_jumpproc(Parser *parser, Node *node)
 	return 0;
 }
 
-int parse_label(Parser *parser, const Token *token, Node *node)
+static int parse_label(Parser *parser, const Token *token, Node *node)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, token->span);
@@ -267,7 +267,7 @@ int parse_label(Parser *parser, const Token *token, Node *node)
 	return 0;
 }
 
-int parse_data(Parser *parser, const Token *token, Node *node)
+static int parse_data(Parser *parser, const Token *token, Node *node)
 {
 	Token next = parser_bump(parser);
 	node->span = span_join(node->span, next.span);
