@@ -55,7 +55,7 @@ void *_arena_xalloc(char *filename, int row, Arena *arena, size_t size)
 #endif
 		if (!arena_expand(arena, new_size)) {
 			fprintf(stderr, "%s:%d:ERROR:failed to expand arena... %lu => %lu\n", filename, row, old_size, new_size);
-			exit(1);
+			abort();
 		}
 	}
 
@@ -69,7 +69,7 @@ void *_xmalloc(char *filename, int row, size_t size)
 	void *block = malloc(size);
 	if (!block) {
 		fprintf(stderr, "%s:%d:ERROR:failed to allocate block... %lu\n", filename, row, size);
-		exit(1);
+		abort();
 	}
 	return block;
 }
@@ -79,7 +79,7 @@ void *_xrealloc(char *filename, int row, void *ptr, size_t size)
 	void *block = realloc(ptr, size);
 	if (!block) {
 		fprintf(stderr, "%s:%d:ERROR:failed to allocate block... %lu\n", filename, row, size);
-		exit(1);
+		abort();
 	}
 	return block;
 }
